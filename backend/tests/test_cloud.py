@@ -41,7 +41,7 @@ class RangeHandler(BaseHTTPRequestHandler):
         self.wfile.write(body[a:b + 1])
 
 
-def make_full(path: Path, n=600):
+def make_full(path: Path, n=600, flag_tiles=None):
     w = tp.make_wcs(23.0, n)
     tp.STARS = [(tp.RA0 + 0.004, tp.DEC0 + 0.006, 50.0), (tp.RA0 - 0.007, tp.DEC0 - 0.002, 30.0)]
     tp.write_mef(path, w, n, (tp.RA0 + 0.001, tp.DEC0), saturate=True, seed=5)
@@ -53,7 +53,7 @@ def make_full(path: Path, n=600):
             hdus.append(x)
     # the S3 copy stores FLAGS tile-compressed (a BINTABLE with ZIMAGE=T)
     hdus[2] = fits.CompImageHDU(hdus[2].data.astype(np.int32), header=hdus[2].header, name="FLAGS",
-                                compression_type="RICE_1")
+                                compression_type="RICE_1", tile_shape=flag_tiles or (1, n))
     hdus.append(fits.ImageHDU(np.random.default_rng(0).normal(size=(121, 40, 40)).astype(np.float32), name="PSF"))
     col = fits.Column(name="VALUES", format="5E", array=np.arange(10, dtype=np.float32).reshape(2, 5))
     hdus.append(fits.BinTableHDU.from_columns([col], name="WCS-WAVE"))
@@ -68,9 +68,10 @@ def server():
     srv.shutdown()
 
 
-def test_cloud_cutout_matches_full_file(tmp_path, server, monkeypatch):
+@pytest.mark.parametrize("flag_tiles", [None, (32, 32)])
+def test_cloud_cutout_matches_full_file(tmp_path, server, monkeypatch, flag_tiles):
     full = tmp_path / "full.fits"
-    make_full(full)
+    make_full(full, flag_tiles=flag_tiles)
     FILES["/bucket/dr1/level2/x/3/level2_X_2D3_spx.fits"] = full.read_bytes()
     monkeypatch.setattr(cloud, "s3_url", lambda access_url, key=None: f"{server}/bucket/dr1/level2/x/3/level2_X_2D3_spx.fits")
     SEEN.clear()
@@ -84,6 +85,13 @@ def test_cloud_cutout_matches_full_file(tmp_path, server, monkeypatch):
         de = ds + 121 * 40 * 40 * 4
     starts = [int(re.match(r"bytes=(\d+)-", r).group(1)) for r in SEEN]
     assert not [s0 for s0 in starts if ds < s0 < de]   # no request starts inside the PSF data
+    if flag_tiles is None:                              # row tiles: only the needed rows' bytes
+        with fits.open(full, disable_image_compression=True) as h:
+            fl0 = h["FLAGS"].fileinfo()["datLoc"]
+            fl1 = fl0 + h["FLAGS"].header["NAXIS1"] * h["FLAGS"].header["NAXIS2"] + h["FLAGS"].header["PCOUNT"]
+        flag_bytes = sum(int(b) - int(a) + 1 for a, b in (re.match(r"bytes=(\d+)-(\d+)", r).groups() for r in SEEN)
+                         if fl0 <= int(a) < fl1)
+        assert flag_bytes < (fl1 - fl0) * 0.6
     with fits.open(mini) as h:
         assert [x.name for x in h] == ["PRIMARY", "IMAGE", "FLAGS", "VARIANCE", "ZODI", "WCS-WAVE"]
         x0, y0, _, _ = map(int, h["IMAGE"].header["LITSBOX"].split(","))

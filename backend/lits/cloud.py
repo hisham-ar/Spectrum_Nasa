@@ -139,6 +139,57 @@ def _decompressed(rr: _Ranged, hdr_off: int, data_off: int, h: fits.Header) -> t
         return np.array(hl[1].data), hl[1].header.copy()
 
 
+def _compressed_rows(rr: _Ranged, h: fits.Header, data_off: int,
+                     y0: int, y1: int, x0: int, x1: int) -> np.ndarray | None:
+    """Fast path for row-tiled RICE_1 images (how the S3 copy stores FLAGS):
+    fetch only the tile descriptors and compressed bytes of rows y0..y1.
+    Returns None if the layout is anything else (caller falls back)."""
+    from astropy.io.fits.hdu.compressed._codecs import Rice1
+
+    zn1 = h.get("ZNAXIS1")
+    if (str(h.get("ZCMPTYPE", "")).strip() not in ("RICE_1", "RICE_ONE") or h.get("ZTILE1") != zn1
+            or h.get("ZTILE2", 1) != 1 or h.get("TFIELDS", 1) != 1):
+        return None
+    tform = str(h.get("TFORM1", ""))
+    dt = ">i4" if "P" in tform else ">i8" if "Q" in tform else None
+    if dt is None:
+        return None
+    zvals = {str(h.get(f"ZNAME{i}", "")).strip().upper(): h.get(f"ZVAL{i}") for i in range(1, 10) if f"ZNAME{i}" in h}
+    blocksize, bytepix = int(zvals.get("BLOCKSIZE", 32)), int(zvals.get("BYTEPIX", 4))
+    rowlen = h["NAXIS1"]
+    nrows = y1 - y0 + 1
+    raw = rr.get(data_off + y0 * rowlen, nrows * rowlen)
+    desc = np.frombuffer(raw, dtype=np.uint8).reshape(nrows, rowlen)[:, :2 * np.dtype(dt).itemsize].copy()
+    desc = desc.view(dt).reshape(nrows, 2).astype(np.int64)        # (nbytes, heap offset)
+    heap0 = data_off + int(h.get("THEAP", rowlen * h["NAXIS2"]))
+    lo = int(desc[:, 1].min())
+    hi = int((desc[:, 1] + desc[:, 0]).max())
+    heap = rr.get(heap0 + lo, hi - lo)
+    codec = Rice1(blocksize=blocksize, bytepix=bytepix, tilesize=zn1)
+    out_dt = {1: np.uint8, 2: np.int16, 4: np.int32, 8: np.int64}[bytepix]
+    rows = np.zeros((nrows, x1 - x0 + 1), dtype=out_dt)
+    for i, (n, off) in enumerate(desc):
+        if n == 0:
+            continue
+        tile = np.asarray(codec.decode(np.frombuffer(heap, dtype=np.uint8, count=int(n), offset=int(off) - lo)))
+        rows[i] = tile.view(out_dt).ravel()[:zn1][x0:x1 + 1] if tile.dtype != out_dt else tile.ravel()[:zn1][x0:x1 + 1]
+    bscale, bzero = h.get("BSCALE", 1), h.get("BZERO", 0)
+    if bscale != 1 or bzero != 0:
+        return rows.astype(np.int64) * bscale + bzero
+    return rows
+
+
+def _image_header_from_compressed(h: fits.Header) -> fits.Header:
+    skip = ("XTENSION", "BITPIX", "NAXIS", "PCOUNT", "GCOUNT", "TFIELDS", "TTYPE", "TFORM", "TUNIT",
+            "THEAP", "TDIM", "EXTNAME", "Z", "CHECKSUM", "DATASUM")
+    out = fits.Header()
+    for card in h.cards:
+        if not card.keyword or card.keyword.startswith(skip) or card.keyword in ("COMMENT", "HISTORY", ""):
+            continue
+        out.append(card)
+    return out
+
+
 def _shift_wcs(h: fits.Header, x0: int, y0: int) -> fits.Header:
     """Same sky, cut-out pixel origin: shift CRPIX of every WCS (incl. alt
     keys such as 'W' and 'A'). SIP and -TAB terms are relative to CRPIX."""
@@ -201,8 +252,12 @@ def fetch(access_url: str, ra: float, dec: float, size_arcmin: float, path: Path
         for name in WANT:
             h, hoff, doff = hdus[name]
             if _is_compressed(h):
-                full, h = _decompressed(rr, hoff, doff, h)
-                a = full[y0:y1 + 1, x0:x1 + 1]
+                a = _compressed_rows(rr, h, doff, y0, y1, x0, x1)
+                if a is None:                                  # unusual tiling: decompress it all
+                    full, h = _decompressed(rr, hoff, doff, h)
+                    a = full[y0:y1 + 1, x0:x1 + 1]
+                else:
+                    h = _image_header_from_compressed(h)
             else:
                 a = _rows(rr, h, doff, y0, y1, x0, x1)
             hh = _shift_wcs(h, x0, y0)
