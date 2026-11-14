@@ -196,12 +196,12 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
       return ref.seq.frames.map((f, i) => ({ idx: [i], meta: f, metas: [f] }));
     }
     if (channels.length === 1) return channels[0].seq.frames.map((f, i) => ({ idx: [i], meta: f, metas: [f] }));
+    // Colour only combines frames from the same visit (by date, not by survey number).
     const [b, g, r] = channels;
     const out: Stop[] = [];
     g.seq.frames.forEach((fg, ig) => {
-      const ib = b.seq.frames.findIndex((f) => f.survey === fg.survey);
-      const ir = r.seq.frames.findIndex((f) => f.survey === fg.survey);
-      if (ib >= 0 && ir >= 0) out.push({ idx: [ib, ig, ir], meta: fg, metas: [b.seq.frames[ib], fg, r.seq.frames[ir]] });
+      const mb = matchFrame(b.seq, fg), mr = matchFrame(r.seq, fg);
+      if (mb?.sameVisit && mr?.sameVisit) out.push({ idx: [mb.i, ig, mr.i], meta: fg, metas: [b.seq.frames[mb.i], fg, r.seq.frames[mr.i]] });
     });
     return out;
   }, [channels, st.grid, st.det]);

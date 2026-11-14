@@ -364,11 +364,12 @@ select { background: var(--chrome-2); color: var(--text); border: 1px solid var(
 .canvases.grid { inset: calc(var(--head-h, 120px) + 10px) 14px calc(var(--dock-h, 150px) + 26px) 14px; gap: 6px; }
 .grid-pane { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .grid-pane.ref { border-color: rgba(168, 208, 255, 0.6); }
+.grid-pane.other-visit { border-color: rgba(242, 210, 75, 0.45); }
 .grid-head { position: absolute; top: 8px; left: 8px; display: flex; align-items: baseline; gap: 7px; max-width: calc(100% - 16px); background: var(--glass); backdrop-filter: blur(8px); padding: 4px 9px; border-radius: 8px; font-size: 13px; pointer-events: none; white-space: nowrap; overflow: hidden; }
 .grid-swatch { flex: none; width: 9px; height: 9px; border-radius: 50%; align-self: center; }
 .grid-name { font-weight: 600; }
 .grid-band { color: #d6d9de; font-variant-numeric: tabular-nums; }
-.pane figcaption.grid-when { left: 8px; bottom: 8px; transform: none; font-size: 12.5px; padding: 3px 8px; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; }
+.pane figcaption.grid-when { left: 8px; bottom: 8px; transform: none; font-size: 12.5px; padding: 3px 8px; max-width: calc(100% - 16px); white-space: normal; line-height: 1.35; }
 .grid-other { color: var(--gold); }
 .grid-open { position: absolute; top: 8px; right: 8px; border: 1px solid rgba(255,255,255,0.12); background: var(--glass); backdrop-filter: blur(8px); color: var(--text); font-size: 12px; padding: 4px 8px; border-radius: 7px; cursor: pointer; opacity: 0; transition: opacity 0.15s ease; }
 .grid-pane:hover .grid-open, .grid-open:focus-visible { opacity: 1; }

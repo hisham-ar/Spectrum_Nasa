@@ -20,17 +20,26 @@ export function dateRange(start: string, end: string): string {
   return `${d1} ${MONTHS[m1 - 1]} ${y1} – ${d2} ${MONTHS[m2 - 1]} ${y2}`;
 }
 
-/** The frame of `seq` that best matches a reference visit: same survey and closest in
- *  time if there is one, otherwise the closest visit overall (flagged as a different survey). */
-export function matchFrame(seq: Sequence, ref: FrameMeta): { i: number; sameSurvey: boolean } | null {
+/** Frames taken within this many days of each other belong to the same SPHEREx visit:
+ *  one visit to a patch of sky spans up to about six weeks, and visits come about six months apart.
+ *  (The nominal "survey" numbers can't be used for this: two visits can share a survey number.) */
+export const SAME_VISIT_DAYS = 60;
+
+/** The frame of `seq` closest in time to a reference visit, and whether it counts as the same visit. */
+export function matchFrame(seq: Sequence, ref: FrameMeta): { i: number; sameVisit: boolean; gapDays: number } | null {
   if (!seq.frames.length) return null;
   const t = Date.parse(ref.time_mid);
-  const by = (fs: { f: FrameMeta; i: number }[]) =>
-    fs.reduce((best, x) => (Math.abs(Date.parse(x.f.time_mid) - t) < Math.abs(Date.parse(best.f.time_mid) - t) ? x : best));
-  const all = seq.frames.map((f, i) => ({ f, i }));
-  const same = all.filter((x) => x.f.survey === ref.survey);
-  if (same.length) return { i: by(same).i, sameSurvey: true };
-  return { i: by(all).i, sameSurvey: false };
+  let best = 0, gap = Infinity;
+  seq.frames.forEach((f, i) => {
+    const d = (Date.parse(f.time_mid) - t) / 86400000;
+    if (Math.abs(d) < Math.abs(gap)) { best = i; gap = d; }
+  });
+  return { i: best, sameVisit: Math.abs(gap) <= SAME_VISIT_DAYS, gapDays: gap };
+}
+
+function gapText(days: number): string {
+  const months = Math.max(1, Math.round(Math.abs(days) / 30.44));
+  return `no visit at this time; closest is ${months} month${months === 1 ? "" : "s"} ${days > 0 ? "later" : "earlier"}`;
 }
 
 interface Props {
@@ -147,14 +156,14 @@ export default function GridView(p: Props) {
           ? p.onXform({ ...x, cx: x.cx - off.x, cy: x.cy - off.y })
           : setOwn((o) => ({ ...o, [det]: x })));
         return (
-          <figure key={det} className={`pane grid-pane ${det === p.refDet ? "ref" : ""}`}>
+          <figure key={det} className={`pane grid-pane ${det === p.refDet ? "ref" : ""} ${m.sameVisit ? "" : "other-visit"}`}>
             <SkyCanvas image={imageOf(c, m.i)} smooth={p.smooth} marker={f.marker} showMarker={p.showMarker}
               labels={p.labelsFor(c.seq)} pixelScale={c.seq.grid.pixel_scale_arcsec} xform={xf} onXform={setXf}
               chrome={k === p.dets.length - 1} ariaLabel={`Detector ${det}, ${lo.toFixed(2)} to ${hi.toFixed(2)} micrometres, ${dateRange(f.date_start, f.date_end)}`} />
             {head}
             <figcaption className="grid-when">
               {dateRange(f.date_start, f.date_end)}
-              {!m.sameSurvey && <span className="grid-other" title="This detector has no visit in the same survey; showing its closest visit."> (closest visit, survey {f.survey})</span>}
+              {!m.sameVisit && <span className="grid-other"> ({gapText(m.gapDays)})</span>}
             </figcaption>
             <button className="grid-open" onClick={() => p.onPick(det)} title={`Show detector ${det} on its own`}>Show alone</button>
           </figure>
