@@ -302,6 +302,8 @@ select { background: var(--chrome-2); color: var(--text); border: 1px solid var(
 .guide-text h2 { margin: 0 0 14px; font: 400 30px/1.15 var(--display); font-variation-settings: "SOFT" 70, "opsz" 72; letter-spacing: -0.01em; }
 .guide-text p, .guide-text li { color: #cdd0d6; line-height: 1.62; max-width: 64ch; }
 .guide-text p { margin: 0 0 12px; }
+.guide-text h3 { margin: 22px 0 8px; font: 600 16px/1.3 var(--ui); color: var(--text); }
+.guide-text h3:first-of-type:first-child { margin-top: 0; }
 .guide-text ul, .guide-text ol { padding-left: 20px; margin: 0 0 14px; }
 .guide-text li { margin: 8px 0; }
 .guide-text strong { color: var(--text); font-weight: 600; }

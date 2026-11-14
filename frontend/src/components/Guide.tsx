@@ -104,19 +104,23 @@ function Step({ n, id, title, children, figure }: { n: number; id: string; title
 function TryIt({ to, onNavigate, children }: { to: string; onNavigate: (to: string) => void; children: ReactNode }) {
   return (
     <a className="try" href={to} onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); onNavigate(to); }}>
-      Try it: {children}
+      Try it yourself: {children}
     </a>
   );
 }
 
+function Link({ to, onNavigate, children }: { to: string; onNavigate: (to: string) => void; children: ReactNode }) {
+  return <a href={to} onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); onNavigate(to); }}>{children}</a>;
+}
+
 const STEPS = [
   ["what", "What SPHEREx is"],
-  ["picture", "Reading one picture"],
-  ["detectors", "Six detectors, one colour bar"],
-  ["colour", "The colour view"],
-  ["time", "Moving through time"],
-  ["black", "Black centres and tinted pixels"],
-  ["limits", "What the pictures can and can't tell you"],
+  ["image", "Understanding an image"],
+  ["detectors", "Exploring the six detectors"],
+  ["colour", "Exploring the sky in colour"],
+  ["time", "Travelling through time"],
+  ["pixels", "Understanding missing and flagged pixels"],
+  ["limits", "What the images can and cannot tell us"],
   ["class", "A ten-minute classroom activity"],
 ] as const;
 
@@ -141,39 +145,41 @@ export default function Guide({ featured, featuredReady, onNavigate }: {
       <header className="guide-head">
         <h1>How to use Lost in the Spectrum</h1>
         <p className="lede">
-          A ten-minute guide to reading the pictures, for curious visitors and for teachers getting ready to show a class.
-          It starts from the basics. Every picture on this page is real data from NASA's SPHEREx telescope.
+          A ten-minute introduction to exploring the sky with NASA's SPHEREx telescope, for curious visitors, students and educators.
+          It starts with the basics and builds up to the tools you can use to investigate the changing sky.
+          Every image in this guide is a real SPHEREx observation.
         </p>
         <nav className="guide-toc" aria-label="In this guide">
           <ol>
             {STEPS.map(([id, t]) => <li key={id}><a href={`#${id}`}>{t}</a></li>)}
           </ol>
         </nav>
-        {f === "missing" && <p className="warn">The example pictures could not be loaded right now. The text below still applies.</p>}
+        {f === "missing" && <p className="warn">The example images could not be loaded right now. The text below still applies.</p>}
       </header>
 
-      <Step n={1} id="what" title="What SPHEREx is">
-        <p>SPHEREx is a NASA space telescope that launched in March 2025. It photographs the whole sky in infrared light, the kind just past red that our eyes can't see. It finishes a full map of the sky about every six months, then starts again.</p>
-        <p>Because it keeps coming back to the same patches of sky, you can compare its pictures over time. Most stars are so far away that they never seem to move. A few nearby ones shift visibly from one map to the next, and this site helps you see that.</p>
+      <Step n={1} id="what" title={STEPS[0][1]}>
+        <p>SPHEREx is a NASA space telescope launched in March 2025. It observes the universe in <strong>infrared light</strong>, wavelengths that are invisible to the human eye.</p>
+        <p>It maps the entire sky about every six months, in 102 infrared wavelength bands. Because it observes the same regions again and again, it lets us study how the sky changes over time.</p>
+        <p>Most stars appear fixed because they are incredibly distant. A few nearby stars move noticeably against the more distant background, and some stars change in brightness. <strong>Lost in the Spectrum makes these observations accessible</strong>, so you can explore the sky and investigate these changes yourself.</p>
       </Step>
 
-      <Step n={2} id="picture" title="Reading one picture"
+      <Step n={2} id="image" title={STEPS[1][1]}
         figure={<>
           <Sky image={fr?.grey[3]} marker={fr?.marker} chrome label="Barnard's Star, detector 3, one SPHEREx visit" />
-          <p className="guide-cap">Barnard's Star, detector 3, {fr?.when[0] ?? "first visit"}. 10 arcminutes across.</p>
+          <p className="guide-cap">Barnard's Star seen by SPHEREx detector 3{fr ? ` in ${fr.when[0]}` : ""}. The image covers about 10 arcminutes.</p>
         </>}>
-        <p>Each picture is a small square of sky around the star you picked.</p>
+        <p>Each image shows a small region of the sky centred on the object or coordinates you chose.</p>
         <ul>
-          <li><strong>Brighter means more infrared light.</strong> The picture is grey because infrared has no colour we can see, so brightness is all there is to show.</li>
-          <li><strong>The dashed circle</strong> marks where the star you searched for should be on that date, worked out from its catalogue position and how fast it moves.</li>
-          <li><strong>The scale bar</strong> in the corner shows size on the sky. One arcminute is about a thirtieth of the width of the full Moon.</li>
-          <li><strong>North is up and east is to the left</strong>, the way astronomers draw the sky as seen from below.</li>
-          <li><strong>Each picture is a stack</strong> of several exposures from one visit, so it's cleaner than a single snapshot.</li>
+          <li><strong>Brightness:</strong> brighter pixels generally mean a stronger infrared signal. Infrared is invisible, so its intensity is shown in shades of grey.</li>
+          <li><strong>Dashed circle:</strong> the predicted position of your star at the time of the observation, calculated from its catalogued position and motion.</li>
+          <li><strong>Scale bar:</strong> the angular size of the region. One arcminute is about a thirtieth of the full Moon's apparent diameter.</li>
+          <li><strong>Orientation:</strong> north is at the top and east to the left, the standard way astronomers show the sky.</li>
+          <li><strong>Combined exposures:</strong> each image combines several exposures from one visit, giving a clearer picture of the region.</li>
         </ul>
-        <TryIt to="/?target=barnard&det=3&fov=10" onNavigate={onNavigate}>open this picture</TryIt>
+        <TryIt to="/?target=barnard&det=3&fov=10" onNavigate={onNavigate}>explore Barnard's Star</TryIt>
       </Step>
 
-      <Step n={3} id="detectors" title="Six detectors, one colour bar"
+      <Step n={3} id="detectors" title={STEPS[2][1]}
         figure={<>
           <div className="guide-rail" role="img" aria-label="The six SPHEREx detectors from 0.75 to 5 micrometres">
             {[1, 2, 3, 4, 5, 6].map((d) => {
@@ -189,92 +195,114 @@ export default function Guide({ featured, featuredReady, onNavigate }: {
           <div className="guide-trio">
             {[1, 3, 6].map((d) => (
               <figure key={d}>
-                <Sky image={fr?.grey[d]} size="small" label={`Barnard's Star in detector ${d}`} />
+                <Sky image={fr?.grey[d]} size="small" label={`Barnard's Star through detector ${d}`} />
                 <figcaption>Detector {d}<br /><span className="quiet">{DETECTORS[d].band[0].toFixed(2)}–{DETECTORS[d].band[1].toFixed(2)} µm</span></figcaption>
               </figure>
             ))}
           </div>
-          <p className="guide-cap">The same patch of sky seen by three of the detectors. Compare which stars stay bright and which fade.</p>
+          <p className="guide-cap">The same region in three wavelength ranges. <strong>Look closely:</strong> which objects stay bright in all three, and which fade or stand out?</p>
         </>}>
-        <p>SPHEREx has six detectors. Each one sees its own slice of infrared, from 0.75 micrometres (just past red light) to 5 micrometres. The coloured bar along the bottom of the explorer is a map of those six slices, shortest on the left. Click a slice to switch detectors.</p>
-        <p><strong>The colours on the bar are only labels</strong> to tell the slices apart. They are not the colour of the sky.</p>
-        <p>Different slices show different things. The short slices on the left pick out ordinary stars. The long slices on the right show cooler things: brown dwarfs, dust and icy clouds.</p>
+        <p>SPHEREx uses six detectors, each observing a different part of the infrared spectrum, from about 0.75 to 5 micrometres (µm).</p>
+        <p>In the explorer, the coloured bar along the bottom shows the six detector ranges, shorter wavelengths on the left and longer on the right. <strong>Select any section of the bar to switch detectors</strong> and see the same region in a different wavelength range.</p>
+        <p>The colours of the bar are only labels to tell the detectors apart. They are not the actual colours of the objects.</p>
+        <ul>
+          <li><strong>Shorter infrared wavelengths</strong> often highlight ordinary stars and other sources that are bright in the near-infrared.</li>
+          <li><strong>Longer infrared wavelengths</strong> can reveal objects and materials that stand out there, including cool brown dwarfs and some dust and molecular features.</li>
+        </ul>
       </Step>
 
-      <Step n={4} id="colour" title="The colour view"
+      <Step n={4} id="colour" title={STEPS[3][1]}
         figure={<>
           <Sky image={fr?.colour} label="Barnard's Star in false colour" />
-          <p className="guide-cap">False colour: detector 1 as blue, 3 as green, 6 as red.</p>
+          <p className="guide-cap">Barnard's Star in false colour: detector 1 as blue, detector 3 as green, detector 6 as red.</p>
         </>}>
-        <p>The <strong>Colour</strong> button joins three detectors into one picture. The shortest slice is shown as blue, the middle as green and the longest as red. Astronomers call this false colour. It's a way of showing invisible light, not what your eye would see.</p>
-        <p>A star that looks blue is brighter in the short slice. One that looks red is brighter in the long slice, which usually means it's cooler or surrounded by dust.</p>
-        <TryIt to="/?target=barnard&det=3&fov=10&col=1" onNavigate={onNavigate}>the colour view</TryIt>
+        <p>SPHEREx observes invisible infrared light, but colour can make differences between wavelengths easier to see. Select the <strong>Colour</strong> button to combine three detectors into one image:</p>
+        <ul>
+          <li><strong>Blue:</strong> the shorter infrared wavelengths.</li>
+          <li><strong>Green:</strong> the middle wavelengths.</li>
+          <li><strong>Red:</strong> the longer wavelengths.</li>
+        </ul>
+        <p>This is called <strong>false-colour imaging</strong>. It is not what our eyes would see; it is a way to compare infrared measurements across wavelength ranges.</p>
+        <p>An object that looks mostly blue has a stronger contribution from the shorter-wavelength channel, and one that looks red has a stronger contribution from the longer-wavelength channel. These differences can hint at an object's physical nature or surrounding material, but colour alone does not establish its identity or temperature.</p>
+        <TryIt to="/?target=barnard&det=3&fov=10&col=1" onNavigate={onNavigate}>explore the false-colour view</TryIt>
       </Step>
 
-      <Step n={5} id="time" title="Moving through time"
+      <Step n={5} id="time" title={STEPS[4][1]}
         figure={<>
-          <Sky image={fr?.blink[phase]} marker={fr?.blinkMarkers[phase]} zoom={2.2} centre={core} label={`Barnard's Star, ${phase ? "last" : "first"} visit`} />
+          <Sky image={fr?.blink[phase]} marker={fr?.blinkMarkers[phase]} zoom={2.2} centre={core} label={`Barnard's Star, ${phase ? "later" : "earlier"} visit`} />
           <div className="guide-blink">
             <span className="guide-blink-tag"><b>{phase ? "B" : "A"}</b> {fr ? fr.when[phase] : ""}</span>
             <button className="chip" onClick={() => setBlinking((b) => !b)}>{blinking ? "Pause" : "Blink"}</button>
             {!blinking && <button className="chip" onClick={() => setPhase((p) => 1 - p)}>Switch visit</button>}
           </div>
-          <p className="guide-cap">Barnard's Star, about a year apart, zoomed in. Watch the black centre jump while the other stars stay put.</p>
+          <p className="guide-cap">Barnard's Star about one year apart, zoomed in. Compare its position with the more distant background stars.</p>
         </>}>
-        <p>The timeline under the picture has one stop for each SPHEREx visit, with the number of days between visits. There are three ways to compare them:</p>
+        <p>SPHEREx observes the same sky again and again. The timeline beneath the image has one stop for each visit, with its dates and the number of days between visits. There are three ways to explore changes:</p>
         <ul>
-          <li><strong>Step</strong> through the visits one at a time with the play button or the ← and → keys.</li>
-          <li><strong>Blink</strong> flips quickly between two visits (press <kbd>B</kbd>). Anything that jumps has moved.</li>
-          <li><strong>Side by side</strong> puts two visits next to each other.</li>
+          <li><strong>Step:</strong> move between visits by selecting a stop or using the ← and → keys, or press play to watch them in sequence.</li>
+          <li><strong>Blink:</strong> rapidly alternate between two visits (press <kbd>B</kbd>). Changes in position are easier to spot when the images alternate.</li>
+          <li><strong>Side by side:</strong> show two visits next to each other for closer inspection.</li>
         </ul>
-        <p>Barnard's Star moves about 10 arcseconds a year across the sky, which is almost two SPHEREx pixels. Zoom in with <strong>+</strong> and blink to see it hop.</p>
-        <TryIt to="/?target=barnard&det=3&fov=10&cmp=blink" onNavigate={onNavigate}>blink Barnard's Star</TryIt>
+        <h3>Try observing Barnard's Star</h3>
+        <p>Barnard's Star is the fastest-moving star in our sky, crossing about 10 arcseconds a year. That is about 1.7 SPHEREx pixels a year, enough to see.</p>
+        <p>Zoom in with <strong>+</strong>, then switch on <strong>Blink</strong> and watch its position against the surrounding stars. Can you see it move?</p>
+        <TryIt to="/?target=barnard&det=3&fov=10&cmp=blink" onNavigate={onNavigate}>compare Barnard's Star over time</TryIt>
       </Step>
 
-      <Step n={6} id="black" title="Black centres and tinted pixels"
+      <Step n={6} id="pixels" title={STEPS[5][1]}
         figure={<>
           <div className="guide-pair">
             <figure>
-              <Sky image={fr?.grey[3]} zoom={3.2} centre={core} size="small" label="Barnard's Star close up, as normally shown" />
-              <figcaption>As normally shown</figcaption>
+              <Sky image={fr?.grey[3]} zoom={3.2} centre={core} size="small" label="Barnard's Star close up, normal view" />
+              <figcaption>Normal view</figcaption>
             </figure>
             <figure>
-              <Sky image={fr?.tinted} zoom={3.2} centre={core} size="small" label="Barnard's Star close up, with left-out pixels tinted" />
-              <figcaption>With pixels tinted</figcaption>
+              <Sky image={fr?.tinted} zoom={3.2} centre={core} size="small" label="Barnard's Star close up, left-out pixels highlighted" />
+              <figcaption>Flagged-pixel view</figcaption>
             </figure>
           </div>
           <div className="legend guide-legend">
             <span><i style={{ background: rgb(SAT_RGB) }} /> too bright to measure</span>
-            <span><i style={{ background: rgb(FLAG_RGB) }} /> marked faulty</span>
+            <span><i style={{ background: rgb(FLAG_RGB) }} /> flagged for other quality issues</span>
           </div>
         </>}>
-        <p>Bright stars overload the detector. Those pixels hold no real measurement, so the site leaves them blank instead of guessing. That's the black centre you'll see on bright stars, including Barnard's Star.</p>
-        <p>The SPHEREx team also marks some pixels as faulty, for example where a cosmic ray hit the detector. Those are left out too.</p>
-        <p>To see exactly which pixels were left out, open <strong>Details</strong> and tick <strong>Tint saturated and flagged pixels</strong>.</p>
+        <p>Some bright stars have dark, missing pixels at their centres. This happens when a source is too bright for the detector to measure accurately, which is called <strong>saturation</strong>. Rather than show unreliable measurements, Lost in the Spectrum leaves these pixels out.</p>
+        <p>Pixels are also left out when the SPHEREx data marks a problem, such as a cosmic-ray hit or a detector artefact.</p>
+        <p>To inspect these areas:</p>
+        <ol>
+          <li>Open <strong>Details</strong> in the explorer.</li>
+          <li>Tick <strong>Tint saturated and flagged pixels</strong>.</li>
+          <li>Look at the highlighted areas to see which measurements were left out.</li>
+        </ol>
+        <p>These markers show the limits of the observations, so missing data isn't mistaken for an astronomical feature.</p>
       </Step>
 
-      <Step n={7} id="limits" title="What the pictures can and can't tell you">
+      <Step n={7} id="limits" title={STEPS[6][1]}>
+        <p>Interpreting SPHEREx images takes care. Knowing the limits of the data matters as much as exploring it.</p>
         <ul>
-          <li><strong>The pixels are big.</strong> Each one is 6.15 arcseconds across, so only nearby, fast-moving stars move visibly within a year or two.</li>
-          <li><strong>The site never decides what you're seeing.</strong> A dot that appears in only one picture could be an asteroid, a cosmic-ray hit, a glitch or something new. You look and decide.</li>
-          <li><strong>Brightness changes need care.</strong> SPHEREx visits each patch of sky pointed a different way each time, and bright stars look different on every visit. Pictures from different data releases may also be calibrated differently.</li>
-          <li><strong>No AI.</strong> Nothing here is made or judged by artificial intelligence. Every picture is real data processed in plain, documented steps; see <a href="/about" onClick={(e) => { e.preventDefault(); onNavigate("/about"); }}>About the data</a>.</li>
+          <li><strong>Image resolution.</strong> Each pixel covers about 6.15 arcseconds of sky, so small changes in position can be hard to see, especially over short periods.</li>
+          <li><strong>Not every difference is a discovery.</strong> An object that appears in one image but not another could be a moving asteroid, a cosmic-ray hit, an instrumental artefact or another astronomical source. A visible difference is a reason to investigate, not necessarily evidence of a new discovery.</li>
+          <li><strong>Brightness comparisons need caution.</strong> Observations can differ in pointing, wavelength coverage, calibration and image quality, which can change how an object looks even when its real brightness hasn't changed.</li>
+          <li><strong>Your observations matter.</strong> The site gives you tools to compare images, but it doesn't claim to find every change or decide what a difference means. If something catches your eye, check it across several observations with the comparison tools.</li>
+          <li><strong>No AI or machine learning.</strong> The site uses conventional astronomical calculations and documented image processing. It does not generate images or use AI to interpret observations. More in <Link to="/about" onNavigate={onNavigate}>About the data</Link>.</li>
         </ul>
       </Step>
 
-      <Step n={8} id="class" title="A ten-minute classroom activity">
-        <p className="guide-q">Start with a question: if stars move, why do the constellations look the same as they did for our grandparents?</p>
+      <Step n={8} id="class" title={STEPS[7][1]}>
+        <h3>Do stars really stay in the same place?</h3>
+        <p className="guide-q">Start with a question: if stars are constantly moving through space, why do the constellations look almost the same today as they did hundreds of years ago?</p>
         <ol className="guide-activity">
-          <li>Open Barnard's Star and press <strong>Blink</strong>. Ask the class what they notice.</li>
-          <li>Zoom in with <strong>+</strong> and turn on <strong>True pixels</strong> to see the individual squares. Count how many pixels the star hops between the first and last visit.</li>
-          <li>Turn pixels into arcseconds (one pixel is 6.15 arcseconds), then read the dates on the timeline and work out the speed in arcseconds per year. It should come to about 10.</li>
-          <li>Try ε Indi B from the main page. It moves too, but less than one pixel a year, so it's much harder to see.</li>
-          <li>Discuss why. Barnard's Star is about 6 light-years away, one of the Sun's nearest neighbours. Nearby things seem to move faster, like a car passing close by compared with a distant plane.</li>
+          <li><strong>Observe the motion.</strong> Open Barnard's Star and switch on <strong>Blink</strong>. Ask students to compare its position with the surrounding stars. What differences can they see?</li>
+          <li><strong>Examine the pixels.</strong> Zoom in with <strong>+</strong> and switch on <strong>True pixels</strong> to show the individual pixels. Compare the first and last visits: roughly how many pixels has Barnard's Star moved?</li>
+          <li><strong>Calculate the movement.</strong> Each pixel is about 6.15 arcseconds. Use the pixel count to work out how far the star moved, then use the dates on the timeline to find its motion per year. The expected value is about <strong>10 arcseconds a year</strong>, although a measurement from the screen will be less precise.</li>
+          <li><strong>Compare another star.</strong> Go back to the main page and choose <strong>ε Indi B</strong> (Epsilon Indi B). This nearby pair of brown dwarfs also moves, but by less than a pixel a year, so it is harder to see. Can students tell the difference?</li>
+          <li><strong>Discuss the results.</strong> Barnard's Star is about six light-years away, one of the Sun's nearest neighbours. Nearby objects show more noticeable motion across the sky, just as a nearby car seems to race across your view while a distant aircraft crawls.</li>
         </ol>
-        <p>The answer to the opening question: stars do move, but most are so far away that it takes thousands of years for their motion to change a constellation's shape.</p>
+        <h3>So why do the constellations look unchanged?</h3>
+        <p>Stars are always moving through space, but most are so distant that their positions barely change over a human lifetime. Over thousands of years, their motion slowly reshapes the familiar constellations.</p>
         <div className="guide-end">
           <a className="chip on big" href="/?target=barnard&det=3&fov=10&cmp=blink" onClick={(e) => { e.preventDefault(); onNavigate("/?target=barnard&det=3&fov=10&cmp=blink"); }}>Open Barnard's Star</a>
-          <a className="chip big" href="/" onClick={(e) => { e.preventDefault(); onNavigate("/"); }}>Search for a star</a>
+          <a className="chip big" href="/" onClick={(e) => { e.preventDefault(); onNavigate("/"); }}>Search for another star</a>
         </div>
       </Step>
     </main>
