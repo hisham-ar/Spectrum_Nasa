@@ -36,7 +36,7 @@ export default function About() {
         <li><strong>Co-adding:</strong> one stack per detector per visit, inverse-variance weighted.</li>
         <li><strong>Add / subtract:</strong> Blink and side-by-side compare; difference images are limited to frames from the same release.</li>
         <li><strong>Field of view:</strong> 5′, 10′ and 20′ presets, plus zoom and pan.</li>
-        <li><strong>Overlays:</strong> predicted position of the searched object on every frame date, from its proper motion.</li>
+        <li><strong>Overlays:</strong> predicted position of the searched object on every frame date (from its proper motion), and known asteroids and comets from NASA/JPL in the Every-exposure view.</li>
         <li><strong>URL query:</strong> every view is a shareable link (<span className="mono">?q=…&amp;det=…&amp;fov=…&amp;frame=…</span>).</li>
         <li><strong>Metadata and flags:</strong> release, survey, dates, detector, wavelengths, exposure count and flagged pixels on every frame.</li>
       </ul>
@@ -46,6 +46,7 @@ export default function About() {
       <ul>
         <li>SPHEREx spectral images, releases DR1 and QR3, from the <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html">NASA/IPAC Infrared Science Archive (IRSA)</a>, via its SIA2 search and cutout service. This research has made use of the NASA/IPAC Infrared Science Archive, which is funded by the National Aeronautics and Space Administration and operated by the California Institute of Technology.</li>
         <li>Object names, positions and proper motions: <a href="https://cds.unistra.fr/cgi-bin/Sesame">CDS Sesame</a> and the <a href="https://simbad.cds.unistra.fr/simbad/">SIMBAD database</a>, CDS, Strasbourg Astronomical Observatory, France.</li>
+        <li>Known asteroids and comets: <a href="https://ssd-api.jpl.nasa.gov/doc/sb_ident.html">NASA/JPL Small-Body Identification API</a> (Solar System Dynamics group).</li>
         <li>SPHEREx mission facts: <a href="https://caltech-ipac.github.io/spherex-archive-documentation/spherex-data-products">IRSA SPHEREx archive documentation</a>, the SPHEREx Explanatory Supplement, and <a href="https://arxiv.org/abs/2404.11017">Crill et al. (2024)</a>.</li>
       </ul>
       <h3>Open-source software</h3>

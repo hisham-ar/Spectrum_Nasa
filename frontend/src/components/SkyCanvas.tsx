@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Marker } from "../lib/types";
+import type { Marker, SmallBody } from "../lib/types";
 
 export interface LoadedFrame { gray: Uint8ClampedArray; mask: Uint8ClampedArray; w: number; h: number }
 
@@ -70,6 +70,7 @@ function compose(f: LoadedFrame, d: Display): HTMLCanvasElement {
 interface Props {
   frame: LoadedFrame | null;
   marker: Marker | null;
+  bodies?: SmallBody[];
   pixelScale: number;
   display: Display;
   xform: ViewXform;
@@ -78,7 +79,7 @@ interface Props {
   ariaLabel: string;
 }
 
-export default function SkyCanvas({ frame, marker, pixelScale, display, xform, onXform, label, ariaLabel }: Props) {
+export default function SkyCanvas({ frame, marker, bodies, pixelScale, display, xform, onXform, label, ariaLabel }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const cv = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ w: 300, h: 300 });
@@ -131,6 +132,25 @@ export default function SkyCanvas({ frame, marker, pixelScale, display, xform, o
       ctx.setLineDash([]);
     }
 
+    // known small bodies (JPL): hollow amber squares, labelled "predicted"
+    if (bodies && bodies.length) {
+      ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+      for (const bd of bodies) {
+        const sx = ox + (bd.x + 0.5) * scale;
+        const sy = oy + (bd.y + 0.5) * scale;
+        const r = Math.max(8, 2 * scale);
+        ctx.strokeStyle = "rgba(255, 181, 71, 0.95)";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(sx - r, sy - r, 2 * r, 2 * r);
+        const label = `${bd.name}${bd.vmag !== null ? ` V${bd.vmag}` : ""} (predicted)`;
+        ctx.fillStyle = "rgba(7,9,16,0.75)";
+        const w = ctx.measureText(label).width;
+        ctx.fillRect(sx + r + 3, sy - 8, w + 6, 15);
+        ctx.fillStyle = "rgba(255, 210, 140, 0.95)";
+        ctx.fillText(label, sx + r + 6, sy + 3);
+      }
+    }
+
     // scale bar
     const oneArcmin = (60 / pixelScale) * scale;
     const len = oneArcmin >= 40 ? 1 : 5;
@@ -160,7 +180,7 @@ export default function SkyCanvas({ frame, marker, pixelScale, display, xform, o
     ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
     ctx.fillText("N", cx0 - 4, cy0 - 26);
     ctx.fillText("E", cx0 - 34, cy0 + 4);
-  }, [frame, marker, display, xform, size, scale, pixelScale]);
+  }, [frame, marker, bodies, display, xform, size, scale, pixelScale]);
 
   const zoomAt = useCallback((factor: number, sx: number, sy: number) => {
     const z = Math.min(16, Math.max(0.5, xform.zoom * factor));

@@ -12,6 +12,9 @@ export interface ExposureMeta {
 
 export interface Marker { x: number; y: number; ra: number; dec: number }
 
+export interface SmallBody { name: string; ra: number; dec: number; x: number; y: number; vmag: number | null }
+export interface AsteroidResult { frame: number; time: string; observer: string; note: string; bodies: SmallBody[] }
+
 export interface FrameMeta {
   index: number;
   png: string;
@@ -30,6 +33,7 @@ export interface FrameMeta {
   outside_px: number;
   marker: Marker | null;
   summary: string;
+  asteroids?: AsteroidResult; // pre-computed for Featured exposures views
 }
 
 export interface EpochSummary {

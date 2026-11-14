@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchFeaturedSequence, fetchSequence, type LocationParams } from "../lib/api";
+import { fetchAsteroids, fetchFeaturedSequence, fetchSequence, type LocationParams } from "../lib/api";
 import { DEFAULTS, hasLocation, readUrl, toSearch, type UrlState } from "../lib/url";
-import { FOV_PRESETS, type BuildStatus, type FeaturedCard, type Sequence, type TargetInfo } from "../lib/types";
+import { FOV_PRESETS, type AsteroidResult, type BuildStatus, type FeaturedCard, type Sequence, type SmallBody, type TargetInfo } from "../lib/types";
 import SkyCanvas, { loadFrame, type Display, type LoadedFrame, type ViewXform } from "./SkyCanvas";
 import Timeline from "./Timeline";
 import DetectorBar from "./DetectorBar";
@@ -41,6 +41,7 @@ export default function Explorer({ featured, featuredReady, onDataDate }: Props)
   const [panelOpen, setPanelOpen] = useState(false);
   const [disp, setDisp] = useState<Omit<Display, "showFlags" | "showMarker">>({ brightness: 0, contrast: 1, smooth: false });
   const [copied, setCopied] = useState(false);
+  const [astRes, setAstRes] = useState<Record<number, AsteroidResult | "loading" | string>>({});
 
   // --- URL sync ---------------------------------------------------------------
   const update = useCallback((patch: Partial<UrlState>, push = false) => {
@@ -101,6 +102,7 @@ export default function Explorer({ featured, featuredReady, onDataDate }: Props)
     if (!seq) return;
     let live = true;
     setXf({ zoom: 1, cx: seq.grid.nx / 2, cy: seq.grid.ny / 2 });
+    setAstRes({});
     Promise.all(seq.frames.map((f) => loadFrame(seq.base + f.png, seq.base + f.mask).catch(() => null)))
       .then((fr) => { if (live) setLoaded(fr); });
     return () => { live = false; };
@@ -134,6 +136,28 @@ export default function Explorer({ featured, featuredReady, onDataDate }: Props)
   }, [cmp, blinkRunning, blinkHz]);
 
   const shown = cmp === "blink" ? (phase ? b : a) : frameIdx;
+
+  // --- known asteroids (Every-exposure view only: they smear in survey stacks) --------
+  const astOn = st.ast && st.view === "exposures" && !!seq;
+  const visible = cmp === "side" ? [a, b] : [shown];
+  useEffect(() => {
+    if (!astOn || !seq) return;
+    for (const i of visible) {
+      const f = seq.frames[i];
+      if (!f || astRes[i] !== undefined) continue;
+      if (f.asteroids) { setAstRes((r) => ({ ...r, [i]: f.asteroids! })); continue; }
+      if (!seq.base?.includes("/api/seq/")) { setAstRes((r) => ({ ...r, [i]: "Not pre-computed for this saved view." })); continue; }
+      setAstRes((r) => ({ ...r, [i]: "loading" }));
+      fetchAsteroids(seq.key, i)
+        .then((res) => setAstRes((r) => ({ ...r, [i]: res })))
+        .catch((e) => setAstRes((r) => ({ ...r, [i]: (e as Error).message })));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [astOn, seq, visible.join(",")]);
+  const bodiesFor = (i: number): SmallBody[] | undefined => {
+    const r = astRes[i];
+    return astOn && r && typeof r === "object" ? r.bodies : undefined;
+  };
 
   // --- keyboard ----------------------------------------------------------------------
   useEffect(() => {
@@ -264,13 +288,13 @@ export default function Explorer({ featured, featuredReady, onDataDate }: Props)
               <div className={`canvases ${cmp === "side" ? "two" : ""}`}>
                 {cmp === "side" ? (
                   <>
-                    <SkyCanvas frame={loaded[a] ?? null} marker={seq.frames[a].marker} pixelScale={seq.grid.pixel_scale_arcsec} display={display} xform={xf} onXform={setXf}
+                    <SkyCanvas frame={loaded[a] ?? null} marker={seq.frames[a].marker} bodies={bodiesFor(a)} pixelScale={seq.grid.pixel_scale_arcsec} display={display} xform={xf} onXform={setXf}
                       label={`A · Survey ${seq.frames[a].survey} · ${seq.frames[a].date_start} · D${seq.detector.id} · ${seq.frames[a].release}`} ariaLabel={seq.frames[a].summary} />
-                    <SkyCanvas frame={loaded[b] ?? null} marker={seq.frames[b].marker} pixelScale={seq.grid.pixel_scale_arcsec} display={display} xform={xf} onXform={setXf}
+                    <SkyCanvas frame={loaded[b] ?? null} marker={seq.frames[b].marker} bodies={bodiesFor(b)} pixelScale={seq.grid.pixel_scale_arcsec} display={display} xform={xf} onXform={setXf}
                       label={`B · Survey ${seq.frames[b].survey} · ${seq.frames[b].date_start} · D${seq.detector.id} · ${seq.frames[b].release}`} ariaLabel={seq.frames[b].summary} />
                   </>
                 ) : (
-                  <SkyCanvas frame={loaded[shown] ?? null} marker={frame?.marker ?? null} pixelScale={seq.grid.pixel_scale_arcsec} display={display} xform={xf} onXform={setXf}
+                  <SkyCanvas frame={loaded[shown] ?? null} marker={frame?.marker ?? null} bodies={bodiesFor(shown)} pixelScale={seq.grid.pixel_scale_arcsec} display={display} xform={xf} onXform={setXf}
                     label={cmp === "blink" ? `${phase ? "B" : "A"} · Survey ${frame?.survey} · ${frame?.date_start} · ${frame?.release}` : undefined}
                     ariaLabel={frame?.summary ?? "SPHEREx frame"} />
                 )}
@@ -302,7 +326,8 @@ export default function Explorer({ featured, featuredReady, onDataDate }: Props)
         {seq && (
           <DataPanel seq={seq} frame={frame} frameTag={cmp === "blink" ? `Showing ${phase ? "B" : "A"}` : cmp === "side" ? "Showing A (left)" : undefined}
             display={display} onDisplay={setDisplay} view={st.view} onView={(v) => update({ view: v, frame: undefined, a: undefined, b: undefined })}
-            compare={cmp} pair={pairMeta} open={panelOpen} onClose={() => setPanelOpen(false)} />
+            compare={cmp} pair={pairMeta} open={panelOpen} onClose={() => setPanelOpen(false)}
+            ast={st.ast} onAst={(v) => update({ ast: v })} astStatus={astRes[cmp === "side" ? a : shown]} />
         )}
       </div>
     </main>

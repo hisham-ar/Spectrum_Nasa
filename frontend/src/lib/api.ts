@@ -1,4 +1,4 @@
-import type { BuildStatus, EpochSummary, FeaturedIndex, Sequence, TargetInfo, View } from "./types";
+import type { AsteroidResult, BuildStatus, EpochSummary, FeaturedIndex, Sequence, TargetInfo, View } from "./types";
 
 const API = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
@@ -69,4 +69,8 @@ export async function fetchFeaturedSequence(folder: string, signal?: AbortSignal
   const seq = (await getJson<Sequence>(`${base}sequence.json`, signal)).body;
   seq.base = base;
   return seq;
+}
+
+export async function fetchAsteroids(key: string, frame: number, signal?: AbortSignal): Promise<AsteroidResult> {
+  return (await getJson<AsteroidResult>(`${API}/api/asteroids?key=${key}&frame=${frame}`, signal)).body;
 }

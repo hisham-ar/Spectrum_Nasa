@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { FrameMeta, Sequence } from "../lib/types";
+import type { AsteroidResult, FrameMeta, Sequence } from "../lib/types";
 import { DETECTORS } from "../lib/types";
 import { fmtDec, fmtRa } from "../lib/coords";
 import type { Display } from "./SkyCanvas";
@@ -32,9 +32,12 @@ interface Props {
   pair?: [FrameMeta, FrameMeta];
   open: boolean;
   onClose: () => void;
+  ast: boolean;
+  onAst: (v: boolean) => void;
+  astStatus?: AsteroidResult | "loading" | string;
 }
 
-export default function DataPanel({ seq, frame, frameTag, display, onDisplay, view, onView, compare, pair, open, onClose }: Props) {
+export default function DataPanel({ seq, frame, frameTag, display, onDisplay, view, onView, compare, pair, open, onClose, ast, onAst, astStatus }: Props) {
   const det = DETECTORS[seq.detector.id];
   const t = seq.target;
   return (
@@ -90,6 +93,26 @@ export default function DataPanel({ seq, frame, frameTag, display, onDisplay, vi
             Show predicted position
           </label>
         )}
+      </section>
+
+      <section className="panel-sec">
+        <label className="check">
+          <input type="checkbox" checked={ast} disabled={view !== "exposures"} onChange={(e) => onAst(e.target.checked)} />
+          Known asteroids and comets (NASA/JPL)
+        </label>
+        {view !== "exposures" ? (
+          <p className="small muted">Asteroids move between exposures and smear out of survey stacks. Switch Advanced controls to “Every exposure” to label them.</p>
+        ) : ast ? (
+          astStatus === "loading" ? <p className="small muted">Asking JPL which known bodies were in this field…</p>
+          : typeof astStatus === "object" ? (
+            <>
+              <p className="small">{astStatus.bodies.length === 0 ? "JPL lists no known asteroid or comet inside this field at this time." : `${astStatus.bodies.length} known bod${astStatus.bodies.length === 1 ? "y" : "ies"} in the field (amber squares).`}</p>
+              <p className="small muted">{astStatus.note} Any other moving dot is unidentified: it could be an artefact, a cosmic ray, or an uncatalogued object.</p>
+            </>
+          ) : astStatus ? (
+            <p className="small warn">Could not reach JPL ({astStatus}). Use IRSA's <a href="https://irsa.ipac.caltech.edu/applications/MOST/" target="_blank" rel="noreferrer">Moving Object Search Tool ↗</a> instead.</p>
+          ) : null
+        ) : null}
       </section>
 
       {compare !== "none" && pair && (
