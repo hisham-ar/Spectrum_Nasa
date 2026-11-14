@@ -89,7 +89,7 @@ def main() -> int:
                 existing = out / "sequence.json"
                 up_to_date = (not args.force and existing.exists()
                               and json.loads(existing.read_text(encoding="utf-8")).get("key") == p["key"])
-                cached = len(exps) if up_to_date else sum(archive.is_cached(e.access_url, cra, cdec, size) for e in exps)
+                cached = len(exps) if up_to_date else sum(archive.is_cached_exposure(e, cra, cdec, size) for e in exps)
                 jobs.append({"card": card, "det": det, "view": view, "req": req, "plan": p, "out": out,
                              "n": len(exps), "cached": cached, "skip": up_to_date})
                 print(f"  {card['slug']:<11} D{det} {view}: {len(p['units'])} epochs, {len(exps)} exposures"
@@ -98,7 +98,7 @@ def main() -> int:
     total = sum(j["n"] for j in jobs)
     cached0 = sum(j["cached"] for j in jobs)
     to_fetch = total - cached0
-    est = to_fetch * 14 / config.MAX_PARALLEL_DOWNLOADS
+    est = to_fetch * (3 if config.CUTOUT_SOURCE != "irsa" else 14) / config.MAX_PARALLEL_DOWNLOADS
     print(f"\n{len(jobs)} sequences, {total} cutouts, {to_fetch} to download "
           f"(first guess ~{est / 60:.0f} min at {config.MAX_PARALLEL_DOWNLOADS} parallel; the bar refines it)\n", flush=True)
     log(f"planned {len(jobs)} sequences, {total} cutouts, {to_fetch} to download")

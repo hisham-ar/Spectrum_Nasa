@@ -32,6 +32,7 @@ class Exposure:
     t_max: float        # MJD
     em_min_um: float | None = None
     em_max_um: float | None = None
+    cloud_key: str | None = None   # "bucket/key" of the AWS S3 copy, from SIA2 cloud_access
 
     @property
     def t_mid(self) -> float:
@@ -118,6 +119,7 @@ def query_collection(collection: str, ra: float, dec: float, radius_deg: float =
     obs = _col(table, "obs_id", "obs_publisher_did")
     emin = _col(table, "em_min")
     emax = _col(table, "em_max")
+    cloud = _col(table, "cloud_access")
     for i in range(len(table)):
         url = str(urls[i])
         band = str(bands[i]) if bands is not None else ""
@@ -136,8 +138,17 @@ def query_collection(collection: str, ra: float, dec: float, radius_deg: float =
             t_min=t0, t_max=t1,
             em_min_um=float(emin[i]) * 1e6 if emin is not None and np.isfinite(emin[i]) else None,
             em_max_um=float(emax[i]) * 1e6 if emax is not None and np.isfinite(emax[i]) else None,
+            cloud_key=_cloud_key(cloud[i]) if cloud is not None else None,
         ))
     return out
+
+
+def _cloud_key(value) -> str | None:
+    try:
+        aws = json.loads(str(value))["aws"]
+        return f"{aws['bucket_name']}/{aws['key']}"
+    except Exception:  # noqa: BLE001 - missing/empty: fall back to the IBE-path mapping
+        return None
 
 
 def find_exposures(ra: float, dec: float, use_cache: bool = True) -> tuple[list[Exposure], dict]:
@@ -304,13 +315,57 @@ def fetch_cutout(access_url: str, ra: float, dec: float, size_arcmin: float,
     raise RuntimeError(f"{type(last).__name__}: {last}")
 
 
+def cloud_cache_path(e: Exposure, ra: float, dec: float, size_arcmin: float) -> Path:
+    return config.CACHE_DIR / "cutouts" / f"s3_{_key(e.access_url.split('?')[0], round(ra, 7), round(dec, 7), round(size_arcmin, 3))}.fits"
+
+
+def is_cached_exposure(e: Exposure, ra: float, dec: float, size_arcmin: float) -> bool:
+    if is_cached(e.access_url, ra, dec, size_arcmin):
+        return True
+    p = cloud_cache_path(e, ra, dec, size_arcmin)
+    return p.exists() and p.stat().st_size > 0
+
+
+def fetch_exposure(e: Exposure, ra: float, dec: float, size_arcmin: float,
+                   attempts: int = 3) -> tuple[Path, CutoutStats]:
+    """Cutout for one exposure from the cache, the AWS S3 copy, or IRSA's
+    cutout service (config.CUTOUT_SOURCE decides the order)."""
+    from . import cloud  # local import keeps archive importable without it
+
+    ibe = cutout_path(cutout_url(e.access_url, ra, dec, size_arcmin))
+    if ibe.exists() and ibe.stat().st_size > 0:
+        return ibe, CutoutStats(str(ibe), 0.0, ibe.stat().st_size, True)
+    cp = cloud_cache_path(e, ra, dec, size_arcmin)
+    if cp.exists() and cp.stat().st_size > 0:
+        return cp, CutoutStats(str(cp), 0.0, cp.stat().st_size, True)
+    errors = []
+    if config.CUTOUT_SOURCE in ("auto", "cloud"):
+        t0 = time.time()
+        for attempt in range(attempts):
+            try:
+                n = cloud.fetch(e.access_url, ra, dec, size_arcmin, cp, e.cloud_key, client())
+                return cp, CutoutStats("s3:" + e.access_url, round(time.time() - t0, 2), n, False)
+            except cloud.NotOnDetector:
+                raise
+            except Exception as ex:  # noqa: BLE001
+                errors.append(f"S3: {type(ex).__name__}: {ex}")
+                if attempt < attempts - 1:
+                    time.sleep(2.0 * (attempt + 1))
+    if config.CUTOUT_SOURCE in ("auto", "irsa"):
+        try:
+            return fetch_cutout(e.access_url, ra, dec, size_arcmin, attempts=attempts if config.CUTOUT_SOURCE == "irsa" else 1)
+        except Exception as ex:  # noqa: BLE001
+            errors.append(f"IRSA cutout: {ex}")
+    raise RuntimeError(" | ".join(errors)[:400])
+
+
 def fetch_many(exposures: list[Exposure], ra: float, dec: float, size_arcmin: float,
                progress: Callable[[int, int], None] | None = None) -> list[tuple[Exposure, Path, CutoutStats]]:
     out: list[tuple[Exposure, Path, CutoutStats]] = []
     done = 0
     failed: list[Exposure] = []
     with ThreadPoolExecutor(max_workers=config.MAX_PARALLEL_DOWNLOADS) as pool:
-        futs = {pool.submit(fetch_cutout, e.access_url, ra, dec, size_arcmin): e for e in exposures}
+        futs = {pool.submit(fetch_exposure, e, ra, dec, size_arcmin): e for e in exposures}
         for fut in futs:
             e = futs[fut]
             try:
@@ -324,7 +379,7 @@ def fetch_many(exposures: list[Exposure], ra: float, dec: float, size_arcmin: fl
     # Second pass, one at a time: Gate A lost 6 of 35 cutouts in parallel.
     for e in failed:
         try:
-            p, s = fetch_cutout(e.access_url, ra, dec, size_arcmin, attempts=2)
+            p, s = fetch_exposure(e, ra, dec, size_arcmin, attempts=2)
             out.append((e, p, s))
         except Exception as ex:  # noqa: BLE001 - a missing exposure is reported, not fatal
             out.append((e, None, CutoutStats(f"{type(ex).__name__}: {ex}", 0.0, 0, False)))  # type: ignore[arg-type]

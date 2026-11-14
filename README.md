@@ -42,6 +42,13 @@ Survey 3 QR3 Aug 2026). Background-star offset between the first and last co-add
 1.73 px north against a predicted 1.68 px. Cutouts take 12–15 s and 4.4 MB each (3.9 MB of that is the PSF layer),
 so live searches sample up to 8 exposures per survey and Featured builds up to 24.
 
+### Where the pixels come from
+
+By default (`LITS_CUTOUT_SOURCE=auto`) cutouts are read from IRSA's public AWS S3 copy of SPHEREx
+(bucket `nasa-irsa-spherex`) with HTTP range requests: only the headers and the rows of IMAGE, FLAGS,
+VARIANCE and ZODI that cover the field are fetched, never the PSF layer. IRSA's cutout service is the
+fallback (on 2026-11-14 it returned HTTP 503 for hours). Force one with `LITS_CUTOUT_SOURCE=cloud` or `irsa`.
+
 Downloaded cutouts are cached in `%LOCALAPPDATA%\lits-cache` (outside OneDrive).
 Set `LITS_CACHE_DIR` to put them elsewhere.
 

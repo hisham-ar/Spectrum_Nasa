@@ -127,11 +127,15 @@ FEATURED_DIR = Path(os.environ.get("LITS_FEATURED_DIR", ROOT.parent / "frontend"
 HTTP_TIMEOUT = float(os.environ.get("LITS_HTTP_TIMEOUT", "120"))
 # Gate A: IRSA cutouts take ~12-15 s each (4.4 MB, 90% of it the PSF layer).
 # Live searches sample fewer exposures per survey; Featured builds use more.
-LIVE_MAX_EXPOSURES_PER_EPOCH = int(os.environ.get("LITS_LIVE_MAX_PER_EPOCH", "8"))
-FEATURED_MAX_EXPOSURES_PER_EPOCH = int(os.environ.get("LITS_FEATURED_MAX_PER_EPOCH", "24"))
-MAX_PARALLEL_DOWNLOADS = int(os.environ.get("LITS_MAX_PARALLEL", "6"))
+LIVE_MAX_EXPOSURES_PER_EPOCH = int(os.environ.get("LITS_LIVE_MAX_PER_EPOCH", "6"))
+FEATURED_MAX_EXPOSURES_PER_EPOCH = int(os.environ.get("LITS_FEATURED_MAX_PER_EPOCH", "16"))
+MAX_PARALLEL_DOWNLOADS = int(os.environ.get("LITS_MAX_PARALLEL", "8"))
 # A cutout that sends nothing for READ_TIMEOUT s, or takes longer than
 # CUTOUT_DEADLINE s in total, is abandoned and retried (never hang forever).
+# Where cutouts come from: "auto" = AWS S3 copy first (fast, skips the PSF
+# layer, works when IRSA's cutout service is down), IRSA cutout service as a
+# fallback; or force "cloud" / "irsa".
+CUTOUT_SOURCE = os.environ.get("LITS_CUTOUT_SOURCE", "auto")
 CUTOUT_READ_TIMEOUT = float(os.environ.get("LITS_CUTOUT_READ_TIMEOUT", "60"))
 CUTOUT_DEADLINE = float(os.environ.get("LITS_CUTOUT_DEADLINE", "180"))
 USER_AGENT = "LostInTheSpectrum/0.1 (NASA Space Apps 2026)"
