@@ -19,7 +19,7 @@ function ApproveCommand({ slug }: { slug: string }) {
   );
 }
 
-function Card({ c, review, onOpen }: { c: FeaturedCard; review: boolean; onOpen: (c: FeaturedCard) => void }) {
+function Card({ c, review, onOpen }: { c: FeaturedCard; review: boolean; onOpen: (c: FeaturedCard, investigate?: boolean) => void }) {
   const folder = c.sequences[`${c.det}-${c.view}`];
   return (
     <article className={`card ${review && !c.verified ? "unchecked" : ""}`}>
@@ -37,7 +37,11 @@ function Card({ c, review, onOpen }: { c: FeaturedCard; review: boolean; onOpen:
       <p className="quiet">What you can really see: {c.can_see}</p>
       <p className="quiet">{c.name}, detector {c.det} ({DETECTORS[c.det].band[0].toFixed(2)} to {DETECTORS[c.det].band[1].toFixed(2)} µm), {c.fov} arcmin field.</p>
       {!review && c.verified_on && <p className="quiet">Checked against the frames on {longDate(c.verified_on)}.</p>}
-      <button className="chip" onClick={() => onOpen(c)}>Open in the explorer</button>
+      <div className="card-actions">
+        {c.investigation && <button className="chip on" onClick={() => onOpen(c, true)}>Investigate</button>}
+        <button className="chip" onClick={() => onOpen(c)}>Open in the explorer</button>
+      </div>
+      {c.investigation && <p className="quiet card-q">Investigation: {c.investigation.question}</p>}
       {review && (
         <div className="review">
           {c.check && c.check.length > 0 && (
@@ -59,7 +63,7 @@ function Card({ c, review, onOpen }: { c: FeaturedCard; review: boolean; onOpen:
   );
 }
 
-export default function Featured({ cards, onOpen }: { cards: FeaturedCard[]; onOpen: (c: FeaturedCard) => void }) {
+export default function Featured({ cards, onOpen }: { cards: FeaturedCard[]; onOpen: (c: FeaturedCard, investigate?: boolean) => void }) {
   const review = new URLSearchParams(window.location.search).has("review");
   const shown = review ? cards : cards.filter((c) => c.verified);
   const approved = cards.filter((c) => c.verified).length;

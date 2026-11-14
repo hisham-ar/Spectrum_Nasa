@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchAsteroids, fetchFeaturedSequence, fetchSequence, type LocationParams } from "../lib/api";
 import { hasLocation, readUrl, toSearch, type UrlState } from "../lib/url";
 import { DETECTORS, FOV_PRESETS, type AsteroidResult, type BuildStatus, type FeaturedCard, type FrameMeta,
-  type Sequence, type SmallBody, type TargetInfo } from "../lib/types";
+  type Sequence, type SmallBody, type StepView, type TargetInfo } from "../lib/types";
 import { DEFAULT_LOOK, FALLBACK_STRETCH, loadPlane, renderGray, renderRGB, type Look, type Plane, type Stretch } from "../lib/render";
 import SkyCanvas, { type CanvasLabel, type ViewXform } from "./SkyCanvas";
 import { skyToPixel } from "../lib/coords";
@@ -14,6 +14,7 @@ import RocketGame from "./RocketGame";
 import { SAT_NOTE_MIN_PX, saturationSwing } from "../lib/saturation";
 import SearchBox from "./SearchBox";
 import GridView, { matchFrame } from "./GridView";
+import InvestigationPanel from "./InvestigationPanel";
 
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 const MAX_BLINK_HZ = 3; // WCAG 2.3.1: never more than 3 flashes per second
@@ -73,6 +74,8 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   const [linked, setLinked] = useState(true);                       // grid: zoom/pan all panels together
   const [gridLoading, setGridLoading] = useState<number | null>(null); // grid: detector being fetched
   const [gridFailed, setGridFailed] = useState<Record<number, string>>({});
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);            // which view the channels belong to
+  const [zoomReq, setZoomReq] = useState<{ zoom: number; n: number } | null>(null);  // investigation step zoom
   const [astRes, setAstRes] = useState<Record<number, AsteroidResult | "loading" | string>>({});
   const dockRef = useRef<HTMLDivElement>(null);
   const [dockH, setDockH] = useState(150);
@@ -119,6 +122,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     if (!hasLocation(st)) { setChannels(null); return; }
     if (st.target && !featuredReady) return;
     const ac = new AbortController();
+    const key = locKey;
     setErr(null); setBuild(null); setBuildFrac(null); setChannels(null); setPlaying(false); setAstRes({});
     setGridLoading(null); setGridFailed({});
     const loc: LocationParams = card ? { q: card.q ?? card.name } : challenge ? { q: challenge.q }
@@ -160,6 +164,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
           if (ac.signal.aborted) return;
           if (chs.length === 1) setXf({ zoom: 1, cx: chs[0].seq.grid.nx / 2, cy: chs[0].seq.grid.ny / 2 });
           setChannels([...chs]);
+          setLoadedKey(key);
           dataDate(chs);
         }
         setGridLoading(null);
@@ -171,6 +176,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
         for (let k = 0; k < dets.length; k++) chs.push(await one(dets[k], k));   // one at a time: the archive is shared
         if (ac.signal.aborted) return;
         setChannels(chs);
+        setLoadedKey(key);
         const s0 = chs[0].seq;
         setXf({ zoom: 1, cx: s0.grid.nx / 2, cy: s0.grid.ny / 2 });
         dataDate(chs);
@@ -249,6 +255,38 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     return () => clearInterval(t);
   }, [cmp, blinkRunning, blinkHz]);
   const shown = cmp === "blink" ? (phase ? b : a) : frameIdx;
+
+  // An investigation step's zoom waits until the frames for its view have loaded, then centres on the target.
+  useEffect(() => {
+    if (!zoomReq || !channels || loadedKey !== locKey) return;
+    const m = stops[cmp === "blink" ? a : shown]?.meta.marker;
+    const g = (st.grid ? (channels.find((c) => c.det === st.det) ?? channels[0]) : channels[0]).seq.grid;
+    setXf({ zoom: zoomReq.zoom, cx: m ? m.x + 0.5 : g.nx / 2, cy: m ? m.y + 0.5 : g.ny / 2 });
+    setZoomReq(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoomReq, channels, loadedKey, locKey]);
+
+  // Guided investigation (Featured cards): each step can set up the view to look at.
+  const invCard = card?.investigation && st.fov === card.fov ? card : undefined;
+  const applyStep = useCallback((i: number, v?: StepView) => {
+    const patch: Partial<UrlState> = { inv: true, step: i };
+    if (v) {
+      if (v.grid) { patch.grid = true; patch.col = false; }
+      else if (v.col) { patch.col = true; patch.grid = false; }
+      else { patch.grid = false; patch.col = false; }
+      if (v.det !== undefined) patch.det = v.det;
+      if (v.cmp) patch.cmp = v.cmp;
+      patch.frame = v.frame; patch.a = v.a; patch.b = v.b;
+      if (v.flags !== undefined) patch.flags = v.flags;
+      if (v.px !== undefined) patch.px = v.px;
+      setZoomReq({ zoom: v.zoom ?? 1, n: Date.now() });
+    }
+    update(patch);
+  }, [update]);
+  // Opened from the Featured page without a step: set up step 1.
+  useEffect(() => {
+    if (st.inv && invCard && st.step === undefined) applyStep(0, invCard.investigation!.steps[0]?.view);
+  }, [st.inv, st.step, invCard, applyStep]);
 
   // --- known asteroids (single detector, Every-exposure view only) -----------------------
   const astOn = st.ast && st.view === "exposures" && channels?.length === 1;
@@ -346,7 +384,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     : `Detector ${st.det}, ${det.band[0].toFixed(2)} to ${det.band[1].toFixed(2)} µm`;
 
   return (
-    <main className={`explorer ${drawer ? "drawer-open" : ""}`}>
+    <main className={`explorer ${drawer || (st.inv && invCard) ? "drawer-open" : ""}`}>
       <section className="stage" aria-label="Sky view" style={{ ["--dock-h" as string]: `${dockH}px`, ["--head-h" as string]: `${headH}px` }}>
         {st.grid && channels ? (
           <GridView dets={[1, 2, 3, 4, 5, 6]} channels={channels} refDet={st.det} refFrame={stops[shown]?.meta}
@@ -392,7 +430,12 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
               title="Zoom and move all six panels together">{linked ? "Linked" : "Not linked"}</button>
           )}
           <button className="tool wide" onClick={share}>{copied ? "Copied" : "Copy link"}</button>
-          <button className={`tool wide ${drawer ? "on" : ""}`} aria-expanded={drawer} onClick={() => setDrawer((d) => !d)} title="I">Details</button>
+          {invCard && (
+            <button className={`tool wide ${st.inv ? "on" : ""}`} aria-expanded={st.inv}
+              onClick={() => (st.inv ? update({ inv: false }) : update({ inv: true, step: st.step ?? 0 }))}>Investigate</button>
+          )}
+          <button className={`tool wide ${drawer && !st.inv ? "on" : ""}`} aria-expanded={drawer && !st.inv}
+            onClick={() => { if (st.inv) { update({ inv: false }); setDrawer(true); } else setDrawer((d) => !d); }} title="I">Details</button>
         </div>
 
         {gameOpen && !err && (
@@ -432,7 +475,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
         )}
 
         {hasSaturatedStar && (
-          <SaturationNote suppressed={st.flags} swing={satSwing} compact={st.grid} onShowPixels={() => { update({ flags: true }); if (window.innerWidth >= 1100) setDrawer(true); }} />
+          <SaturationNote suppressed={st.flags} swing={satSwing} compact={st.grid || st.inv} onShowPixels={() => { update({ flags: true }); if (window.innerWidth >= 1100) setDrawer(true); }} />
         )}
 
         <div className="dock" ref={dockRef}>
@@ -482,7 +525,10 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
         </div>
       </section>
 
-      {channels && ch0 && (
+      {st.inv && invCard ? (
+        <InvestigationPanel card={invCard} step={st.step ?? 0} onStep={applyStep} featured={featured}
+          onClose={() => update({ inv: false })} onNavigate={onNavigate} />
+      ) : channels && ch0 && (
         <DataPanel seq={ch0.seq} channels={st.grid
             ? [...channels].sort((x, y) => x.det - y.det).map((c) => { const m = stop ? matchFrame(c.seq, stop.meta) : null; return { det: c.det, frame: m ? c.seq.frames[m.i] : undefined }; })
             : channels.map((c, k) => ({ det: c.det, frame: stop ? c.seq.frames[stop.idx[k]] : undefined }))}

@@ -121,7 +121,7 @@ export interface StepView {
   frame?: number; a?: number; b?: number; flags?: boolean; px?: boolean; zoom?: number;
 }
 export interface InvestigationStep { title: string; text: string; view?: StepView }
-export interface Investigation { question: string; steps: InvestigationStep[]; takeaway: string; try_next?: string; try_next_q?: string }
+export interface Investigation { question: string; steps: InvestigationStep[]; takeaway: string; try_next?: string; try_next_q?: string; try_next_target?: string }
 
 export interface FeaturedIndex { built_at: string; data_as_of?: string; cards: FeaturedCard[] }
 

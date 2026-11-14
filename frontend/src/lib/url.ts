@@ -18,10 +18,12 @@ export interface UrlState {
   ast: boolean;        // known-asteroid overlay (Every-exposure view)
   col: boolean;        // false colour from three detectors
   grid: boolean;       // all six detectors side by side
+  inv: boolean;        // guided investigation panel open (Featured cards)
+  step?: number;       // current investigation step
   px: boolean;         // true pixels (no display smoothing)
 }
 
-export const DEFAULTS: UrlState = { fov: 10, det: 3, view: "survey", cmp: "none", flags: false, marker: true, ast: false, col: false, grid: false, px: false };
+export const DEFAULTS: UrlState = { fov: 10, det: 3, view: "survey", cmp: "none", flags: false, marker: true, ast: false, col: false, grid: false, inv: false, px: false };
 
 function num(v: string | null): number | undefined {
   if (v === null || v.trim() === "") return undefined;
@@ -52,6 +54,8 @@ export function readUrl(search = window.location.search): UrlState {
     ast: p.get("ast") === "1",
     col: p.get("col") === "1" && p.get("grid") !== "1",
     grid: p.get("grid") === "1",
+    inv: p.get("inv") === "1",
+    step: num(p.get("step")),
     px: p.get("px") === "1",
   };
 }
@@ -78,6 +82,8 @@ export function toSearch(s: UrlState): string {
   if (s.ast) p.set("ast", "1");
   if (s.col) p.set("col", "1");
   if (s.grid) p.set("grid", "1");
+  if (s.inv) p.set("inv", "1");
+  if (s.inv && s.step !== undefined) p.set("step", String(s.step));
   if (s.px) p.set("px", "1");
   return "?" + p.toString();
 }

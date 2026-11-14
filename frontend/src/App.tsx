@@ -48,7 +48,8 @@ export default function App() {
   };
   const onResolved = (t: TargetInfo) =>
     go(t.kind === "coords" ? `/?ra=${t.ra.toFixed(5)}&dec=${t.dec.toFixed(5)}&fov=10` : `/?q=${encodeURIComponent(t.query)}&fov=10`);
-  const onPick = (c: FeaturedCard) => go(`/?target=${c.slug}&det=${c.det}&fov=${c.fov}${c.compare && c.compare !== "none" ? `&cmp=${c.compare}` : ""}`);
+  const onPick = (c: FeaturedCard, investigate = false) =>
+    go(`/?target=${c.slug}&det=${c.det}&fov=${c.fov}${investigate ? "&inv=1" : c.compare && c.compare !== "none" ? `&cmp=${c.compare}` : ""}`);
   const exploring = page === "explore" && hasLocation(readUrl());
 
   return (

@@ -29,7 +29,51 @@
       ],
       "verified": true,
       "verified_by": "Claude (checked for TheFam)",
-      "verified_on": "2026-11-14"
+      "verified_on": "2026-11-14",
+      "investigation": {
+        "question": "Is Barnard's Star really moving across the sky?",
+        "steps": [
+          {
+            "title": "Find the star",
+            "view": {
+              "det": 3,
+              "cmp": "none",
+              "frame": 0
+            },
+            "text": "The dashed circle marks where Barnard's Star should be. Its centre is too bright for SPHEREx and is left blank, so look for a round black patch with a glowing edge."
+          },
+          {
+            "title": "Blink a year apart",
+            "view": {
+              "det": 3,
+              "cmp": "blink"
+            },
+            "text": "These two visits are a year apart. Watch the black patch hop upwards, which is north, while the stars around it stay where they are."
+          },
+          {
+            "title": "Zoom in and count",
+            "view": {
+              "det": 3,
+              "cmp": "blink",
+              "px": true,
+              "zoom": 4
+            },
+            "text": "With True pixels on you can see the individual squares. The hop is almost two pixels, about 10 arcseconds. No other star moves this far in a year."
+          },
+          {
+            "title": "Check every detector",
+            "view": {
+              "grid": true,
+              "cmp": "blink",
+              "px": false
+            },
+            "text": "In the grid, every detector shows the same hop. If only one detector showed it, it could be a glitch; all six agreeing means the star itself moved."
+          }
+        ],
+        "takeaway": "Barnard's Star is about 6 light-years away, one of the Sun's nearest neighbours. Nearby stars cross the sky fastest, the same way a nearby car seems to move faster than a distant plane.",
+        "try_next": "Search for Kapteyn's Star, another fast-moving neighbour, and see whether you can spot its motion.",
+        "try_next_q": "Kapteyn's Star"
+      }
     },
     {
       "slug": "eps-indi-b",
@@ -60,7 +104,51 @@
       ],
       "verified": true,
       "verified_by": "Claude (checked for TheFam)",
-      "verified_on": "2026-11-14"
+      "verified_on": "2026-11-14",
+      "investigation": {
+        "question": "Why does ε Indi B look so different in each detector?",
+        "steps": [
+          {
+            "title": "Start at the short end",
+            "view": {
+              "det": 1,
+              "cmp": "none",
+              "frame": 1
+            },
+            "text": "In detector 1 (0.75 to 1.09 µm) there's only a faint dot in the dashed circle. Brown dwarfs are too cool to give off much light at these wavelengths."
+          },
+          {
+            "title": "Jump to the long end",
+            "view": {
+              "det": 6,
+              "cmp": "none",
+              "frame": 1
+            },
+            "text": "In detector 6 (4.42 to 5.00 µm) the same dot is one of the brightest in view. Cool objects give off most of their light at longer infrared wavelengths."
+          },
+          {
+            "title": "See all six at once",
+            "view": {
+              "grid": true,
+              "cmp": "none",
+              "frame": 1
+            },
+            "text": "Compare how bright the dot in the circle is next to its neighbours in each panel, from detector 1 to detector 6."
+          },
+          {
+            "title": "Find its sun",
+            "view": {
+              "det": 6,
+              "cmp": "none",
+              "frame": 1
+            },
+            "text": "The bright star to the right with the blank centre is ε Indi A, the star the two brown dwarfs orbit, about 6.7 arcminutes away on the sky."
+          }
+        ],
+        "takeaway": "Comparing detectors is how astronomers pick out cool objects: a dot that gets brighter towards long wavelengths, while ordinary stars fade, is a sign of something cold, like a brown dwarf.",
+        "try_next": "Open WISE 0855, the coldest known brown dwarf, and see whether it behaves the same way.",
+        "try_next_target": "wise-0855"
+      }
     },
     {
       "slug": "wise-0855",
@@ -91,7 +179,46 @@
       ],
       "verified": true,
       "verified_by": "Claude (checked for TheFam)",
-      "verified_on": "2026-11-14"
+      "verified_on": "2026-11-14",
+      "investigation": {
+        "question": "Can SPHEREx see the coldest known brown dwarf?",
+        "steps": [
+          {
+            "title": "Look where it should be",
+            "view": {
+              "det": 6,
+              "cmp": "none",
+              "frame": 2,
+              "zoom": 4
+            },
+            "text": "Zoomed in on the dashed circle in detector 6, there's a faint dot inside it. Detector 6 sees 4.42 to 5.00 µm, where WISE 0855 gives off most of its light."
+          },
+          {
+            "title": "Check that it moves",
+            "view": {
+              "det": 5,
+              "cmp": "blink",
+              "a": 0,
+              "b": 3,
+              "zoom": 4
+            },
+            "text": "Blinking two detector-5 visits a year apart, the dot drifts right (west) along with the circle, about 1.3 pixels. A background star wouldn't move."
+          },
+          {
+            "title": "Switch to the short end",
+            "view": {
+              "det": 1,
+              "cmp": "none",
+              "frame": 2,
+              "zoom": 4
+            },
+            "text": "In detector 1 it vanishes. The dot near the circle here is a background star that stays still while WISE 0855 moves towards it."
+          }
+        ],
+        "takeaway": "At around 0 °C, WISE 0855 gives off almost nothing at short wavelengths but still glows faintly at 4 to 5 micrometres. That's why the longest detectors find it and the shortest can't.",
+        "try_next": "Search for Luhman 16, a pair of brown dwarfs 6.5 light-years away, and compare detectors 1 and 6.",
+        "try_next_q": "Luhman 16"
+      }
     },
     {
       "slug": "rw-aur",
@@ -122,7 +249,55 @@
       ],
       "verified": true,
       "verified_by": "Claude (checked for TheFam)",
-      "verified_on": "2026-11-14"
+      "verified_on": "2026-11-14",
+      "investigation": {
+        "question": "Can we tell whether RW Aurigae changed brightness?",
+        "steps": [
+          {
+            "title": "Start where it's measured",
+            "view": {
+              "det": 1,
+              "cmp": "none",
+              "frame": 0,
+              "flags": true
+            },
+            "text": "In detector 1 the star's centre has real measurements: none of its pixels is solid magenta (too bright) in this visit. A lightly tinted pixel means close to the detector's limit, but still measured."
+          },
+          {
+            "title": "Try detector 3",
+            "view": {
+              "det": 3,
+              "cmp": "none",
+              "frame": 0,
+              "flags": true
+            },
+            "text": "In detector 3 the centre is tinted in every visit: too bright to measure. Any brightness change there is invisible to us."
+          },
+          {
+            "title": "Compare two detector-6 visits",
+            "view": {
+              "det": 6,
+              "cmp": "side",
+              "a": 0,
+              "b": 1,
+              "flags": true
+            },
+            "text": "In detector 6 the centre is blank in the first visit and measured in the second. Comparing their brightness would compare a gap with a measurement."
+          },
+          {
+            "title": "Mind the small print",
+            "view": {
+              "det": 1,
+              "cmp": "blink",
+              "flags": false
+            },
+            "text": "Even in detector 1, each visit mixes slightly different wavelengths and SPHEREx was pointed differently, so small brightness differences between visits can't be trusted by eye."
+          }
+        ],
+        "takeaway": "Before trusting a brightness change, check that the pixels were really measured and that the visits can be compared. Astronomers measure brightness with careful calibration, not by eye.",
+        "try_next": "Pick any bright star, switch on the pixel tint, and find which detectors can actually measure it.",
+        "try_next_q": "Vega"
+      }
     },
     {
       "slug": "r-dra",
@@ -190,7 +365,42 @@
           "dec": 66.63319,
           "radius_arcsec": 35
         }
-      ]
+      ],
+      "investigation": {
+        "question": "What stays the same in the most-watched patch of sky?",
+        "steps": [
+          {
+            "title": "Meet the two named objects",
+            "view": {
+              "det": 3,
+              "cmp": "none",
+              "frame": 1
+            },
+            "text": "The gold circles mark NGC 6552, a spiral galaxy roughly 350 million light-years away, and the Cat's Eye Nebula, the glowing shell around a dying star in our own galaxy."
+          },
+          {
+            "title": "Step through the visits",
+            "view": {
+              "det": 3,
+              "cmp": "none",
+              "frame": 4
+            },
+            "text": "Use the timeline to step through all five frames. The same stars and the galaxy appear every time, in the same places."
+          },
+          {
+            "title": "Compare the detectors",
+            "view": {
+              "grid": true,
+              "cmp": "none",
+              "frame": 1
+            },
+            "text": "In the grid, look at how the galaxy and the Cat's Eye change from detector 1 to detector 6."
+          }
+        ],
+        "takeaway": "Most of the sky doesn't change from one visit to the next. That steady background is what makes a moving or changing object stand out.",
+        "try_next": "Search for M51, the Whirlpool Galaxy, and compare how a galaxy looks in each detector.",
+        "try_next_q": "M51"
+      }
     },
     {
       "slug": "orion-ices",
@@ -228,7 +438,51 @@
           "dec": -5.2675,
           "radius_arcsec": 75
         }
-      ]
+      ],
+      "investigation": {
+        "question": "What does a star-forming cloud look like in infrared?",
+        "steps": [
+          {
+            "title": "Find the blank heart",
+            "view": {
+              "det": 1,
+              "cmp": "none",
+              "frame": 0
+            },
+            "text": "In detector 1 the glowing cloud surrounds a large blank centre: the young stars at its heart are far too bright for SPHEREx."
+          },
+          {
+            "title": "Spot the smaller cloud",
+            "view": {
+              "det": 1,
+              "cmp": "none",
+              "frame": 0
+            },
+            "text": "The gold circle marks M43, a smaller cloud just north of the main nebula, with its own blank centre."
+          },
+          {
+            "title": "Compare the detectors",
+            "view": {
+              "grid": true,
+              "cmp": "none",
+              "frame": 0
+            },
+            "text": "In the grid, compare the cloud's shape and how much of it is blank in each detector."
+          },
+          {
+            "title": "Add colour",
+            "view": {
+              "col": true,
+              "cmp": "none",
+              "frame": 0
+            },
+            "text": "Colour shows the short, middle and long wavelengths as blue, green and red, so you can see where the cloud's light changes."
+          }
+        ],
+        "takeaway": "Infrared light passes through dust that blocks visible light, which is why infrared telescopes are used to study where stars form.",
+        "try_next": "Search for the Lagoon Nebula (M8), another star-forming cloud.",
+        "try_next_q": "M8"
+      }
     }
   ]
 }

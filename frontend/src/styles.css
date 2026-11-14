@@ -385,3 +385,24 @@ select { background: var(--chrome-2); color: var(--text); border: 1px solid var(
   .grid-chip, .colour-chip { padding: 0 10px; }
 }
 @media (hover: none) { .grid-open { opacity: 1; } }
+
+/* ---- guided investigation (in the side drawer) ---- */
+.inv-q { font: 400 21px/1.3 var(--display); font-variation-settings: "SOFT" 60, "opsz" 36; margin: 0 0 6px !important; }
+.inv-how { font-size: 13px !important; }
+.inv-steps { list-style: none; margin: 0; padding: 4px 12px 0; }
+.inv-steps li { border-radius: 10px; margin: 2px 0; }
+.inv-steps li.on { background: rgba(168, 208, 255, 0.07); }
+.inv-step-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 8px; border: 0; background: none; color: var(--text); font-size: 14.5px; font-weight: 600; text-align: left; cursor: pointer; border-radius: 10px; }
+.inv-steps li:not(.on) .inv-step-head { color: #b9bec7; font-weight: 500; }
+.inv-n { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; background: rgba(255,255,255,0.07); color: var(--muted); }
+.inv-steps li.on .inv-n { background: var(--cryo); color: #000; }
+.inv-steps li.seen .inv-n { background: rgba(168, 208, 255, 0.25); color: var(--text); }
+.inv-body { padding: 0 10px 12px 42px; }
+.inv-body p { margin: 0 0 10px; font-size: 14px; line-height: 1.55; color: #d3d6db; }
+.inv-nav { display: flex; justify-content: space-between; gap: 8px; padding: 12px 20px 14px; }
+.inv-end h3 { margin: 6px 0 6px; }
+.inv-end p { line-height: 1.55; }
+.inv-end .chip { margin-top: 6px; }
+.inv-again { margin-left: 8px; }
+.card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.card-q { font-style: italic; }
