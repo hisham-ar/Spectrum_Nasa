@@ -97,6 +97,10 @@ export interface FeaturedCard {
   can_see: string;
   category: string;
   verified: boolean;
+  verified_by?: string;     // who checked the frames (shown in review mode only)
+  verified_on?: string;     // YYYY-MM-DD
+  check?: string[];         // what a reviewer should see before approving
+  review_note?: string;     // the measurements behind the card text
   ra: number; dec: number;
   fov: number;
   det: number;
