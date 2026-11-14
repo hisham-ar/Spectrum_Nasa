@@ -57,6 +57,7 @@ export interface TargetInfo {
 }
 
 export interface Sequence {
+  query?: string;          // cache-busting query for Featured files (set by the client)
   schema: number;
   key: string;
   status: "ready";

@@ -23,6 +23,19 @@ from . import archive, asteroids, config, frames
 from .resolve import NotFoundError, ParseError, Target, resolve
 
 app = FastAPI(title="Lost in the Spectrum API", version="0.1")
+
+
+@app.middleware("http")
+async def cache_headers(request, call_next):
+    """Hashed build files never change, so browsers may keep them. The page itself
+    and Featured data keep their names across rebuilds, so browsers must re-check."""
+    resp = await call_next(request)
+    path = request.url.path
+    if path.startswith("/assets/"):
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif not path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
 
 _targets: dict[str, tuple[float, Target]] = {}

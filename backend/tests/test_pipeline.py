@@ -242,3 +242,11 @@ def test_display_names():
     assert display_name("eps Ind B", "* eps Ind B") == "ε Ind B"
     assert display_name("rw aur", "V* RW Aur") == "RW Aur"
     assert display_name("x", "* tet01 Ori C") == "θ¹ Ori C"
+
+
+def test_cache_headers():
+    from fastapi.testclient import TestClient
+    from lits import api
+    c = TestClient(api.app)
+    assert c.get("/api/health").headers.get("cache-control") is None      # API answers decide their own caching
+    assert c.get("/featured/index.json").headers.get("cache-control") == "no-cache"

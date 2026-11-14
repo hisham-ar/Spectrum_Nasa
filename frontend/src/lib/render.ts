@@ -111,15 +111,17 @@ function channel(im: HTMLImageElement): Uint8ClampedArray {
 }
 
 /** Float frame if the sequence has one, else the older 8-bit PNG. */
-export async function loadPlane(base: string, f: { png: string; mask: string; f32?: string }, w: number, h: number): Promise<Plane> {
-  const mask = channel(await loadImage(base + f.mask));
+export async function loadPlane(base: string, f: { png: string; mask: string; f32?: string }, w: number, h: number,
+  query = ""): Promise<Plane> {
+  const url = (name: string) => base + name + (query ? `?${query}` : "");
+  const mask = channel(await loadImage(url(f.mask)));
   if (f.f32) {
-    const r = await fetch(base + f.f32);
+    const r = await fetch(url(f.f32));
     if (r.ok) {
       const buf = await r.arrayBuffer();
       if (buf.byteLength === w * h * 4) return { data: new Float32Array(buf), mask, w, h };
     }
   }
-  const g = channel(await loadImage(base + f.png));
+  const g = channel(await loadImage(url(f.png)));
   return { data: Float32Array.from(g), mask, w, h, fallback: true };
 }

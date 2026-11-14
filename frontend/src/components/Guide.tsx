@@ -39,7 +39,7 @@ function useBarnard(featured: FeaturedCard[], ready: boolean): Frames | null | "
       const first = s3.frames[0], last = s3.frames[s3.frames.length - 1];
       const planeFor = async (sq: Sequence, survey: number) => {
         const f = sq.frames.find((x) => x.survey === survey) ?? sq.frames[0];
-        return loadPlane(sq.base!, f, sq.grid.nx, sq.grid.ny);
+        return loadPlane(sq.base!, f, sq.grid.nx, sq.grid.ny, sq.query);
       };
       const grey: Record<number, ImageData> = {};
       const firstPlanes: (Plane | null)[] = [];

@@ -120,7 +120,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
           setBuildFrac(b.total ? b.done / b.total : null);
         }, ac.signal);
       if (card && seq.target) seq.target = { ...seq.target, name: card.name };
-      const planes = await Promise.all(seq.frames.map((f) => loadPlane(seq.base!, f, seq.grid.nx, seq.grid.ny).catch(() => null)));
+      const planes = await Promise.all(seq.frames.map((f) => loadPlane(seq.base!, f, seq.grid.nx, seq.grid.ny, seq.query).catch(() => null)));
       return { det, seq, planes };
     };
     (async () => {
@@ -468,7 +468,7 @@ function Hero({ featured, featuredReady, onPickFeatured, onResolved, onChallenge
         const stretches: Stretch[] = [];
         for (const sq of seqs) {
           const fi = sq.frames.findIndex((f) => f.survey === survey);
-          const p = await loadPlane(sq.base!, sq.frames[fi >= 0 ? fi : 0], sq.grid.nx, sq.grid.ny);
+          const p = await loadPlane(sq.base!, sq.frames[fi >= 0 ? fi : 0], sq.grid.nx, sq.grid.ny, sq.query);
           planes.push(p);
           stretches.push(p.fallback ? FALLBACK_STRETCH : { lo: sq.stretch.lo, hi: sq.stretch.hi, a: sq.stretch.a });
         }

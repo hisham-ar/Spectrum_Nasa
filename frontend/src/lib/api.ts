@@ -56,18 +56,25 @@ export async function fetchSequence(
 }
 
 let featuredCache: Promise<FeaturedIndex | null> | null = null;
+let featuredBuilt = "";   // build stamp, added to every Featured file URL so a rebuild is never served stale
 
 export function fetchFeatured(): Promise<FeaturedIndex | null> {
-  featuredCache ??= fetch("/featured/index.json")
+  // Always re-check the list: a rebuild keeps the same file names.
+  featuredCache ??= fetch("/featured/index.json", { cache: "no-cache" })
     .then((r) => (r.ok ? (r.json() as Promise<FeaturedIndex>) : null))
+    .then((ix) => { featuredBuilt = ix?.built_at ?? ""; return ix; })
     .catch(() => null);
   return featuredCache;
 }
 
 export async function fetchFeaturedSequence(folder: string, signal?: AbortSignal): Promise<Sequence> {
   const base = `/featured/${folder}`;
-  const seq = (await getJson<Sequence>(`${base}sequence.json`, signal)).body;
+  const query = featuredBuilt ? `v=${encodeURIComponent(featuredBuilt)}` : "";
+  const r = await fetch(`${base}sequence.json${query ? `?${query}` : ""}`, { signal, cache: "no-cache" });
+  if (!r.ok) throw new Error(`Featured sequence missing (${r.status})`);
+  const seq = (await r.json()) as Sequence;
   seq.base = base;
+  seq.query = query;
   return seq;
 }
 
