@@ -17,7 +17,8 @@ for the Google Cloud Run setup (deploys automatically from this repo).
 Needs Python 3.10 or newer.
 
 ```powershell
-cd "C:\Users\Hrafi\OneDrive\Desktop\VScode\coding stuffs\PutMyCodeProperly\ANasaSpaceApps\lost-in-the-spectrum"
+git clone https://github.com/hisham-ar/Spectrum_Nasa.git
+cd Spectrum_Nasa
 py -m venv .venv
 .venv\Scripts\Activate.ps1          # if blocked: Set-ExecutionPolicy -Scope Process Bypass
 pip install -r backend\requirements.txt
