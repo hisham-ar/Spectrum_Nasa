@@ -24,7 +24,7 @@ function Card({ c, review, onOpen }: { c: FeaturedCard; review: boolean; onOpen:
   return (
     <article className={`card ${review && !c.verified ? "unchecked" : ""}`}>
       <button className="card-thumb" onClick={() => onOpen(c)} aria-label={`Open ${c.name}`} style={{ padding: 0, cursor: "pointer" }}>
-        {folder && <img src={`/featured/${folder}frame_0.png`} alt="" loading="lazy" />}
+        {folder && <img src={`/featured/${folder}frame_0.png`} alt="" />}
       </button>
       <div className="card-tags">
         <span className="tag">{c.category}</span>
