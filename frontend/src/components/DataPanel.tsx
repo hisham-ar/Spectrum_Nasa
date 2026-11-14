@@ -4,6 +4,7 @@ import { DETECTORS } from "../lib/types";
 import { fmtDec, fmtRa } from "../lib/coords";
 import { FLAG_RGB, SAT_RGB, type Look } from "../lib/render";
 import { longDate } from "./Timeline";
+import { swingText, type SatSwing } from "../lib/saturation";
 
 export const GLOSSARY: Record<string, string> = {
   "co-add": "Several exposures of the same detector stacked into one cleaner image.",
@@ -28,6 +29,7 @@ interface Props {
   onLook: (l: Look) => void;
   showFlags: boolean;
   onFlags: (v: boolean) => void;
+  swing?: SatSwing | null;
   showMarker: boolean;
   onMarker: (v: boolean) => void;
   view: "survey" | "exposures";
@@ -90,13 +92,18 @@ export default function DataPanel(p: Props) {
       {p.compare !== "none" && p.pair && (
         <section className="callout">
           <p>Comparing survey {p.pair[0].survey} ({longDate(p.pair[0].date_start)}) with survey {p.pair[1].survey} ({longDate(p.pair[1].date_start)}).</p>
-          <p>These are suitable observations to compare. We have not automatically checked whether anything changed. Explore them yourself.</p>
+          {p.swing
+            ? <p className="warn">{swingText(p.swing)}</p>
+            : <p>These are suitable observations to compare. We have not automatically checked whether anything changed. Explore them yourself.</p>}
           {p.pair[0].release !== p.pair[1].release && <p className="warn">They come from different releases ({p.pair[0].release} and {p.pair[1].release}). Compare positions, not brightness.</p>}
         </section>
       )}
       {seq.comparability.notes.filter((n) => !n.startsWith("Frames come from different releases") || p.compare === "none").map((n, i) => (
         <section key={i}><p className="warn">{n}</p></section>
       ))}
+      {p.swing && p.compare === "none" && (
+        <section><p className="warn">{swingText(p.swing)}</p></section>
+      )}
       {p.view === "exposures" && (
         <section><p className="warn">Single exposures each catch this spot at a different wavelength, so stars can flicker for no astronomical reason. Use this view for fast movers like asteroids, not for brightness.</p></section>
       )}

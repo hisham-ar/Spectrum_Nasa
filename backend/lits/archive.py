@@ -164,9 +164,12 @@ def find_exposures(ra: float, dec: float, use_cache: bool = True) -> tuple[list[
     found: list[Exposure] = []
     per_collection: dict[str, int] = {}
     errors: dict[str, str] = {}
-    for coll in config.COLLECTIONS:
+    # Ask IRSA about every collection at once (one after another took 7-13 s).
+    with ThreadPoolExecutor(max_workers=len(config.COLLECTIONS)) as pool:
+        futures = {coll: pool.submit(query_collection, coll, ra, dec) for coll in config.COLLECTIONS}
+    for coll, fut in futures.items():               # keep the collection order stable
         try:
-            rows = query_collection(coll, ra, dec)
+            rows = fut.result()
             per_collection[coll] = len(rows)
             found.extend(rows)
         except Exception as e:  # noqa: BLE001 - one dead collection must not kill the search

@@ -9,6 +9,8 @@ import Timeline, { longDate, monthSpan } from "./Timeline";
 import SpectralRail from "./SpectralRail";
 import DataPanel from "./DataPanel";
 import SaturationNote from "./SaturationNote";
+import RocketGame from "./RocketGame";
+import { SAT_NOTE_MIN_PX, saturationSwing } from "../lib/saturation";
 import SearchBox from "./SearchBox";
 
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -65,6 +67,8 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   const [drawer, setDrawer] = useState(() => window.innerWidth >= 1500);
   const [look, setLook] = useState<Look>(DEFAULT_LOOK);
   const [copied, setCopied] = useState(false);
+  const [gameOpen, setGameOpen] = useState(false);
+  const [slowLoad, setSlowLoad] = useState(false);
   const [astRes, setAstRes] = useState<Record<number, AsteroidResult | "loading" | string>>({});
   const dockRef = useRef<HTMLDivElement>(null);
   const [dockH, setDockH] = useState(150);
@@ -225,11 +229,18 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     return astOn && r && typeof r === "object" ? r.bodies : undefined;
   };
 
+  // Offer the game only when a load is genuinely slow (a new patch of sky), not for Featured.
+  useEffect(() => {
+    if (channels || err) { setSlowLoad(false); return; }
+    const t = setTimeout(() => setSlowLoad(true), 2500);
+    return () => clearTimeout(t);
+  }, [channels, err]);
+
   // --- keyboard ----------------------------------------------------------------------------
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || !channels) return;
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || !channels || gameOpen) return;
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         e.preventDefault();
         if (cmp === "blink") { setBlinkRunning(false); setPhase((p) => 1 - p); return; }
@@ -246,7 +257,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [channels, cmp, n, frameIdx, update]);
+  }, [channels, cmp, n, frameIdx, update, gameOpen]);
 
   const goTarget = (t: TargetInfo) => {
     if (t.kind === "coords") onNavigate(`/?ra=${t.ra.toFixed(5)}&dec=${t.dec.toFixed(5)}&fov=${st.fov}`);
@@ -271,7 +282,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   const ariaFor = (si: number) => stops[si]?.meta.summary ?? "SPHEREx frame";
   const smooth = !st.px;
   // A real saturated blob (not a stray pixel) anywhere in the frames on screen.
-  const SAT_NOTE_MIN_PX = 12;
+  const satSwing = channels ? saturationSwing(channels.map((c) => ({ det: c.det, seq: c.seq }))) : null;
   const hasSaturatedStar = !!channels?.some((c) => c.seq.frames.some((f) => f.saturated_px >= SAT_NOTE_MIN_PX));
   const share = async () => {
     try { await navigator.clipboard.writeText(window.location.href); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* ignore */ }
@@ -320,7 +331,20 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
           <button className={`tool wide ${drawer ? "on" : ""}`} aria-expanded={drawer} onClick={() => setDrawer((d) => !d)} title="I">Details</button>
         </div>
 
-        {(err || !channels || n === 0) && (
+        {gameOpen && !err && (
+          <div className="status game" role="region" aria-label="Rocket game">
+            {!channels && (
+              <div className="game-load">
+                <span>{build ?? "Searching the SPHEREx archive"}</span>
+                {buildFrac !== null && <div className="meter" aria-hidden="true"><i style={{ width: `${Math.round(buildFrac * 100)}%` }} /></div>}
+              </div>
+            )}
+            <RocketGame ready={!!channels} readyText={n > 0 ? "Your images are ready." : "Loading finished, but SPHEREx has no images here."}
+              onShowSky={() => setGameOpen(false)} onClose={() => setGameOpen(false)} />
+          </div>
+        )}
+
+        {!(gameOpen && !err) && (err || !channels || n === 0) && (
           <div className={`status ${err ? "error" : ""}`} role={err ? "alert" : "status"} aria-live="polite">
             {err ? (
               <>
@@ -332,6 +356,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
                 <p><strong>{build ?? "Searching the SPHEREx archive"}</strong></p>
                 {buildFrac !== null && <div className="meter" aria-hidden="true"><i style={{ width: `${Math.round(buildFrac * 100)}%` }} /></div>}
                 <p className="quiet">A new patch of sky downloads real SPHEREx exposures, about a minute the first time. Featured targets open instantly.</p>
+                {slowLoad && <button className="chip game-start" onClick={() => setGameOpen(true)}>Play a game while you wait</button>}
               </>
             ) : (
               <>
@@ -343,7 +368,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
         )}
 
         {hasSaturatedStar && (
-          <SaturationNote suppressed={st.flags} onShowPixels={() => { update({ flags: true }); if (window.innerWidth >= 1100) setDrawer(true); }} />
+          <SaturationNote suppressed={st.flags} swing={satSwing} onShowPixels={() => { update({ flags: true }); if (window.innerWidth >= 1100) setDrawer(true); }} />
         )}
 
         <div className="dock" ref={dockRef}>
@@ -397,7 +422,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
           look={look} onLook={setLook} showFlags={st.flags} onFlags={(v) => update({ flags: v })}
           showMarker={st.marker} onMarker={(v) => update({ marker: v })}
           view={st.view} onView={(v) => update({ view: v, col: false, frame: undefined, a: undefined, b: undefined })}
-          compare={cmp} pair={pairMeta} open={drawer} onClose={() => setDrawer(false)}
+          compare={cmp} pair={pairMeta} swing={satSwing} open={drawer} onClose={() => setDrawer(false)}
           ast={st.ast} onAst={(v) => update({ ast: v })} astStatus={astRes[cmp === "side" ? a : shown]} />
       )}
     </main>

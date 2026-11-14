@@ -256,3 +256,28 @@ nav .nav-short { display: none; }
 .sat-note-pill { position: absolute; left: 8px; bottom: calc(var(--dock-h, 150px) + 16px); display: flex; align-items: center; gap: 2px; background: var(--glass); backdrop-filter: blur(12px); border-radius: 12px; padding: 4px; z-index: 5; }
 .sat-note-pill .chip { border-color: transparent; background: none; }
 .sat-note-pill .sat-note-x { position: static; }
+.sat-note p.sat-note-strong { color: var(--gold); }
+
+/* ---- rocket game (shown during long loads) ---- */
+.game-start { margin-top: 8px; }
+.status.game { width: min(500px, 94%); padding: 14px 16px 12px; text-align: left; top: 44%; }
+.game-load { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.game-load .meter { margin: 6px 0 0; }
+.rocket-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; font-size: 14px; }
+.rocket-close { position: static; margin-left: auto; }
+.rocket-board { position: relative; }
+.rocket-board canvas { display: block; width: 100%; aspect-ratio: 3 / 2; border-radius: 8px; border: 1px solid var(--line); touch-action: none; }
+.rocket-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.rocket-overlay p { margin: 0; }
+.rocket-actions { display: flex; gap: 8px; }
+.rocket-help { margin: 8px 0 0; font-size: 12.5px; }
+.rocket-pad { display: none; }
+@media (pointer: coarse) {
+  .rocket-pad { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(2, 44px); gap: 6px; justify-content: center; margin-top: 10px; }
+  .rocket-pad button { border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,0.05); font-size: 16px; }
+  .rocket-pad button:nth-child(1) { grid-column: 2; grid-row: 1; }
+  .rocket-pad button:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .rocket-pad button:nth-child(3) { grid-column: 2; grid-row: 2; }
+  .rocket-pad button:nth-child(4) { grid-column: 3; grid-row: 2; }
+  .rocket-help { display: none; }
+}

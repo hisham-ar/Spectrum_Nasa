@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { SatSwing } from "../lib/saturation";
 
 const KEY = "lits:hide-saturation-note";
 
@@ -8,7 +9,7 @@ function hiddenForGood(): boolean {
 
 /** Explains the blank (black) centres of bright stars. Shown once per view;
  *  "Don't show this again" remembers the choice in this browser. */
-export default function SaturationNote({ onShowPixels, suppressed }: { onShowPixels: () => void; suppressed: boolean }) {
+export default function SaturationNote({ onShowPixels, suppressed, swing }: { onShowPixels: () => void; suppressed: boolean; swing?: SatSwing | null }) {
   const [open, setOpen] = useState(() => !hiddenForGood());
   // On a phone the full note would cover the star it explains: start as a small button.
   const [expanded, setExpanded] = useState(() => !(window.matchMedia?.("(max-width: 820px)").matches ?? false));
@@ -31,6 +32,7 @@ export default function SaturationNote({ onShowPixels, suppressed }: { onShowPix
       <h2 id="sat-note-title">Why bright stars have black centres</h2>
       <p>This star is brighter than SPHEREx can measure. Where the detector maxed out, the pixels are left blank, not filled with a number that was never really measured.</p>
       <p>The glow around a bright star also looks different from visit to visit. SPHEREx comes back to each patch of sky about every six months, pointed at a different angle each time, so a change in that glow doesn't mean the star got brighter or fainter.</p>
+      {swing && <p className="sat-note-strong">For this star the blank area itself changes a lot between visits ({swing.min.toLocaleString("en-US")} to {swing.max.toLocaleString("en-US")} pixels), so don't compare visits here.</p>}
       <div className="sat-note-actions">
         <button className="chip" onClick={() => { onShowPixels(); setOpen(false); }}>Show which pixels</button>
         <button className="sat-note-never" onClick={never}>Don't show this again</button>
