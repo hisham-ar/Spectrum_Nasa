@@ -103,9 +103,11 @@ FOV_PRESETS_ARCMIN = {"small": 5.0, "medium": 10.0, "large": 20.0}
 FOV_MAX_ARCMIN = float(os.environ.get("LITS_FOV_MAX_ARCMIN", "20"))
 
 # Shared display stretch: percentiles over all frames of one sequence.
-STRETCH_LOW_PCT = 1.0
-STRETCH_HIGH_PCT = 99.5
-ASINH_SOFTENING = 0.1  # astropy AsinhStretch "a"
+# Black point at the sky level (median) and a soft asinh curve: tested on real
+# Barnard frames, this reads like a real astronomy image instead of grey grain.
+STRETCH_LOW_PCT = 50.0
+STRETCH_HIGH_PCT = 99.9
+ASINH_SOFTENING = 0.05  # astropy AsinhStretch "a"
 
 # --- Cache -------------------------------------------------------------------
 

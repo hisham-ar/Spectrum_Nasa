@@ -2,15 +2,13 @@ import type { ReactNode } from "react";
 import type { AsteroidResult, FrameMeta, Sequence } from "../lib/types";
 import { DETECTORS } from "../lib/types";
 import { fmtDec, fmtRa } from "../lib/coords";
-import type { Display } from "./SkyCanvas";
-import { FLAG_RGB, SAT_RGB } from "./SkyCanvas";
+import { FLAG_RGB, SAT_RGB, type Look } from "../lib/render";
+import { longDate } from "./Timeline";
 
 export const GLOSSARY: Record<string, string> = {
   "co-add": "Several exposures of the same detector stacked into one cleaner image.",
   saturation: "The star was too bright for the detector, so those pixels hold no usable measurement.",
   zodi: "Zodiacal light: sunlight scattered by dust in the Solar System, glowing across the whole sky.",
-  PSF: "Point spread function: the shape a single point of light takes in the telescope's images.",
-  epoch: "One visit to this patch of sky. SPHEREx comes back roughly every six months.",
   release: "The batch of processed data from the SPHEREx team. Different releases can use different calibrations.",
 };
 
@@ -22,10 +20,16 @@ const rgb = (c: number[]) => `rgb(${c.join(",")})`;
 
 interface Props {
   seq: Sequence;
+  channels: { det: number; frame: FrameMeta | undefined }[];
+  colour: boolean;
   frame: FrameMeta | undefined;
   frameTag?: string;
-  display: Display;
-  onDisplay: (d: Display) => void;
+  look: Look;
+  onLook: (l: Look) => void;
+  showFlags: boolean;
+  onFlags: (v: boolean) => void;
+  showMarker: boolean;
+  onMarker: (v: boolean) => void;
   view: "survey" | "exposures";
   onView: (v: "survey" | "exposures") => void;
   compare: "none" | "blink" | "side";
@@ -37,155 +41,135 @@ interface Props {
   astStatus?: AsteroidResult | "loading" | string;
 }
 
-export default function DataPanel({ seq, frame, frameTag, display, onDisplay, view, onView, compare, pair, open, onClose, ast, onAst, astStatus }: Props) {
-  const det = DETECTORS[seq.detector.id];
+export default function DataPanel(p: Props) {
+  const { seq, frame } = p;
   const t = seq.target;
   return (
-    <aside className={`panel ${open ? "open" : ""}`} aria-label="About this frame">
-      <div className="panel-head">
-        <h2>About this frame</h2>
-        <button className="btn icon only-mobile" onClick={onClose} aria-label="Close panel">✕</button>
+    <aside className={`drawer ${p.open ? "open" : ""}`} aria-label="About this view" aria-hidden={!p.open}>
+      <div className="drawer-head">
+        <h2>About this view</h2>
+        <button className="tool" onClick={p.onClose} aria-label="Close details">×</button>
       </div>
 
-      <section className="panel-sec">
-        <div className="target-name">{t?.name ?? "Typed coordinates"}{t && <span className="pill">{t.label}</span>}</div>
-        <div className="mono small">{fmtRa(seq.centre.ra)} {fmtDec(seq.centre.dec)} · field {seq.request.fov}′</div>
-        <p className="small muted">{seq.centre.note}.</p>
-        {t?.moves && display.showMarker && (
-          <p className="small"><span className="swatch ring" /> Dashed circle: where {t.name} is predicted to be on each frame's date.</p>
-        )}
+      <section>
+        <p className="d-name">{t?.name ?? "Typed coordinates"} {t && <span className="tag">{t.label}</span>}</p>
+        <p className="num">{fmtRa(seq.centre.ra)} {fmtDec(seq.centre.dec)}, {seq.request.fov} arcmin field</p>
+        <p className="quiet">{seq.centre.note}.</p>
+        {t?.moves && <p><span className="ring" aria-hidden="true" /> The dashed circle is where {t.name} should be on each survey's date, from its catalogued motion.</p>}
       </section>
 
-      {frame ? (
-        <section className="panel-sec">
-          {frameTag && <div className="frame-tag">{frameTag}</div>}
+      {frame && (
+        <section>
+          {p.frameTag && <p className="d-tag">{p.frameTag}</p>}
           <dl className="facts">
             <dt><Term t="release">Release</Term></dt><dd>{frame.release}</dd>
-            <dt>{view === "exposures" ? "Time" : "Survey"}</dt>
-            <dd>{view === "exposures" ? frame.time_mid.replace("T", " ").slice(0, 19) + " UTC" : `${frame.survey} (nominal six-month window)`}</dd>
-            <dt>Dates</dt><dd className="mono">{frame.date_start}{frame.date_end !== frame.date_start ? ` → ${frame.date_end}` : ""}</dd>
-            <dt>Detector</dt><dd>D{seq.detector.id} · {det.label} · <span className="mono">{det.band[0].toFixed(2)}–{det.band[1].toFixed(2)} µm</span></dd>
-            <dt>At the centre</dt>
-            <dd className="mono">{frame.wavelength_range_um ? `${frame.wavelength_range_um[0].toFixed(2)}–${frame.wavelength_range_um[1].toFixed(2)} µm` : "not recorded"}</dd>
-            <dt>Exposures</dt>
-            <dd>{frame.n_exposures - (frame.n_failed ?? 0)}{frame.n_available > frame.n_exposures ? ` of ${frame.n_available} (evenly sampled)` : ""}{frame.n_failed ? ` · ${frame.n_failed} could not be downloaded` : ""}{view === "survey" ? <> · <Term t="co-add" /></> : " · single exposure"}</dd>
-            <dt><Term t="saturation">Saturated</Term></dt><dd>{frame.saturated_px} px{frame.near_saturated_px ? ` · ${frame.near_saturated_px} px near saturation` : ""}</dd>
-            <dt>Flagged</dt><dd>{frame.flagged_px} px</dd>
+            <dt>Survey</dt><dd>{p.view === "exposures" ? "single exposure" : `${frame.survey} (six-month window)`}</dd>
+            <dt>Dates</dt><dd className="num">{longDate(frame.date_start)}{frame.date_end !== frame.date_start ? ` to ${longDate(frame.date_end)}` : ""}</dd>
+            {p.channels.map(({ det, frame: f }, k) => (
+              <div className="facts-row" key={det}>
+                <dt>{p.colour ? ["Blue", "Green", "Red"][k] : "Detector"}</dt>
+                <dd>
+                  D{det}, {DETECTORS[det].label.toLowerCase()}, <span className="num">{DETECTORS[det].band[0].toFixed(2)}–{DETECTORS[det].band[1].toFixed(2)} µm</span>
+                  {f && <span className="quiet"> {f.n_exposures - (f.n_failed ?? 0)} exposures{f.n_available > f.n_exposures ? ` of ${f.n_available}` : ""}{f.n_failed ? `, ${f.n_failed} missing` : ""}</span>}
+                </dd>
+              </div>
+            ))}
+            <dt><Term t="saturation">Saturated</Term></dt><dd className="num">{frame.saturated_px} px{frame.near_saturated_px ? `, ${frame.near_saturated_px} near` : ""}</dd>
+            <dt>Flagged</dt><dd className="num">{frame.flagged_px} px</dd>
           </dl>
           <p className="sr-only" aria-live="polite">{frame.summary}</p>
         </section>
-      ) : null}
+      )}
 
-      <section className="panel-sec">
-        <label className="check">
-          <input type="checkbox" checked={display.showFlags} onChange={(e) => onDisplay({ ...display, showFlags: e.target.checked })} />
-          Show saturated and flagged pixels
+      {p.colour && (
+        <section>
+          <p className="warn">False colour. SPHEREx sees infrared, which has no visible colour; here the shortest band is shown as blue and the longest as red. Each band has its own fixed brightness scale.</p>
+        </section>
+      )}
+
+      {p.compare !== "none" && p.pair && (
+        <section className="callout">
+          <p>Comparing survey {p.pair[0].survey} ({longDate(p.pair[0].date_start)}) with survey {p.pair[1].survey} ({longDate(p.pair[1].date_start)}).</p>
+          <p>These are suitable observations to compare. We have not automatically checked whether anything changed. Explore them yourself.</p>
+          {p.pair[0].release !== p.pair[1].release && <p className="warn">They come from different releases ({p.pair[0].release} and {p.pair[1].release}). Compare positions, not brightness.</p>}
+        </section>
+      )}
+      {seq.comparability.notes.filter((n) => !n.startsWith("Frames come from different releases") || p.compare === "none").map((n, i) => (
+        <section key={i}><p className="warn">{n}</p></section>
+      ))}
+      {p.view === "exposures" && (
+        <section><p className="warn">Single exposures each catch this spot at a different wavelength, so stars can flicker for no astronomical reason. Use this view for fast movers like asteroids, not for brightness.</p></section>
+      )}
+
+      <section>
+        <h3>Display</h3>
+        <label className="slider">Brightness
+          <input type="range" min={-2} max={2} step={0.05} value={p.look.gain} onChange={(e) => p.onLook({ ...p.look, gain: Number(e.target.value) })} />
         </label>
-        <div className="legend small">
-          <span><i style={{ background: rgb(SAT_RGB) }} /> saturated (left out)</span>
-          <span><i style={{ background: "rgb(190,110,180)" }} /> near saturation (kept)</span>
-          <span><i style={{ background: rgb(FLAG_RGB) }} /> flagged / no usable data</span>
-          <span><i style={{ background: "#151a24", border: "1px solid #2a3142" }} /> outside coverage</span>
+        <label className="slider">Faint detail
+          <input type="range" min={-2} max={2} step={0.05} value={-p.look.soft} onChange={(e) => p.onLook({ ...p.look, soft: -Number(e.target.value) })} />
+        </label>
+        <button className="link" onClick={() => p.onLook({ ...p.look, gain: 0, soft: 0 })}>Reset display</button>
+        <p className="quiet">These change every frame in the same way, so comparisons stay fair.</p>
+        <label className="check"><input type="checkbox" checked={p.showFlags} onChange={(e) => p.onFlags(e.target.checked)} /> Tint saturated and flagged pixels</label>
+        <div className="legend">
+          <span><i style={{ background: rgb(SAT_RGB) }} /> saturated, left out</span>
+          <span><i style={{ background: "rgb(190,110,180)" }} /> near saturation, kept</span>
+          <span><i style={{ background: rgb(FLAG_RGB) }} /> flagged, left out</span>
         </div>
-        <p className="small muted">Saturated and flagged pixels are never averaged in; with the tint off they show black, which is why the brightest stars have a black core. Pixels that only came close to saturation are kept, as in IRSA's own photometry, but their brightness is less reliable.</p>
-        {t?.moves && (
-          <label className="check">
-            <input type="checkbox" checked={display.showMarker} onChange={(e) => onDisplay({ ...display, showMarker: e.target.checked })} />
-            Show predicted position
-          </label>
-        )}
+        <p className="quiet">Left-out pixels are never averaged in. Untinted, they show black, which is why the brightest stars have a black core.</p>
+        {t?.moves && <label className="check"><input type="checkbox" checked={p.showMarker} onChange={(e) => p.onMarker(e.target.checked)} /> Show predicted position</label>}
       </section>
 
-      <section className="panel-sec">
+      <section>
+        <h3>Timeline</h3>
+        <div className="seg" role="radiogroup" aria-label="Timeline">
+          <button role="radio" aria-checked={p.view === "survey"} className={p.view === "survey" ? "on" : ""} onClick={() => p.onView("survey")}>One frame per survey</button>
+          <button role="radio" aria-checked={p.view === "exposures"} className={p.view === "exposures" ? "on" : ""} onClick={() => p.onView("exposures")}>Every exposure</button>
+        </div>
         <label className="check">
-          <input type="checkbox" checked={ast} disabled={view !== "exposures"} onChange={(e) => onAst(e.target.checked)} />
-          Known asteroids and comets (NASA/JPL)
+          <input type="checkbox" checked={p.ast} disabled={p.view !== "exposures" || p.colour} onChange={(e) => p.onAst(e.target.checked)} />
+          Label known asteroids and comets (NASA JPL)
         </label>
-        {view !== "exposures" ? (
-          <p className="small muted">Asteroids move between exposures and smear out of survey stacks. Switch Advanced controls to “Every exposure” to label them.</p>
-        ) : ast ? (
-          astStatus === "loading" ? <p className="small muted">Asking JPL which known bodies were in this field…</p>
-          : typeof astStatus === "object" ? (
-            <>
-              <p className="small">{astStatus.bodies.length === 0 ? "JPL lists no known asteroid or comet inside this field at this time." : `${astStatus.bodies.length} known bod${astStatus.bodies.length === 1 ? "y" : "ies"} in the field (amber squares).`}</p>
-              <p className="small muted">{astStatus.note} Any other moving dot is unidentified: it could be an artefact, a cosmic ray, or an uncatalogued object.</p>
-            </>
-          ) : astStatus ? (
-            <p className="small warn">Could not reach JPL ({astStatus}). Use IRSA's <a href="https://irsa.ipac.caltech.edu/applications/MOST/" target="_blank" rel="noreferrer">Moving Object Search Tool ↗</a> instead.</p>
-          ) : null
+        {p.view !== "exposures" ? (
+          <p className="quiet">Asteroids smear out of survey stacks. Switch to every exposure to label them.</p>
+        ) : p.ast ? (
+          p.astStatus === "loading" ? <p className="quiet">Asking JPL which known bodies were in the field.</p>
+            : typeof p.astStatus === "object" ? (
+              <p className="quiet">{p.astStatus.bodies.length === 0 ? "JPL lists no known asteroid or comet in this field at this time." : `${p.astStatus.bodies.length} known in the field, yellow squares.`} {p.astStatus.note} Any other moving dot is unidentified: an artefact, a cosmic ray, or something uncatalogued.</p>
+            ) : p.astStatus ? (
+              <p className="warn">JPL could not be reached ({p.astStatus}). IRSA's <a href="https://irsa.ipac.caltech.edu/applications/MOST/" target="_blank" rel="noreferrer">Moving Object Search Tool</a> does the same job.</p>
+            ) : null
         ) : null}
       </section>
 
-      {compare !== "none" && pair && (
-        <section className="panel-sec callout">
-          <p><strong>Comparing</strong> {compare === "blink" ? "A ↔ B" : "A | B"}: Survey {pair[0].survey} ({pair[0].date_start}) and Survey {pair[1].survey} ({pair[1].date_start}), detector {seq.detector.id}.</p>
-          <p>These are suitable observations to compare. We have not automatically checked whether anything changed — explore them yourself.</p>
-          {pair[0].release !== pair[1].release && <p className="warn">A and B come from different releases ({pair[0].release} vs {pair[1].release}). Compare positions, not brightness.</p>}
-        </section>
-      )}
-
-      {seq.comparability.notes.length > 0 && (
-        <section className="panel-sec">
-          {seq.comparability.notes.map((n, i) => <p key={i} className="warn small">{n}</p>)}
-        </section>
-      )}
-      {view === "exposures" && (
-        <section className="panel-sec">
-          <p className="warn small">Raw exposures: each one sees this spot at a different wavelength, so stars can "flicker" for no astronomical reason. Use this view for fast movers such as asteroids, not for brightness.</p>
-        </section>
-      )}
-
-      <details className="panel-sec">
-        <summary>Advanced controls</summary>
-        <div className="seg" role="radiogroup" aria-label="Timeline mode">
-          <button role="radio" aria-checked={view === "survey"} className={view === "survey" ? "on" : ""} onClick={() => onView("survey")}>One frame per survey</button>
-          <button role="radio" aria-checked={view === "exposures"} className={view === "exposures" ? "on" : ""} onClick={() => onView("exposures")}>Every exposure</button>
-        </div>
-        <label className="slider">Brightness
-          <input type="range" min={-0.5} max={0.5} step={0.01} value={display.brightness} onChange={(e) => onDisplay({ ...display, brightness: Number(e.target.value) })} />
-        </label>
-        <label className="slider">Contrast
-          <input type="range" min={0.5} max={3} step={0.05} value={display.contrast} onChange={(e) => onDisplay({ ...display, contrast: Number(e.target.value) })} />
-        </label>
-        <label className="check">
-          <input type="checkbox" checked={display.smooth} onChange={(e) => onDisplay({ ...display, smooth: e.target.checked })} />
-          Smooth pixels (display only)
-        </label>
-        <button className="btn small" onClick={() => onDisplay({ ...display, brightness: 0, contrast: 1 })}>Reset display</button>
-        <p className="small muted">Brightness and contrast change the same way for every frame, so the comparison stays fair.</p>
-      </details>
-
-      <details className="panel-sec">
-        <summary>How was this made?</summary>
-        <ul className="small how">
-          <li>Data: {seq.provenance.source}; collections {(seq.provenance.collections ?? []).join(", ")}.</li>
-          <li>Release shown on every frame. Frames from different releases are never subtracted.</li>
-          <li>Each frame: {seq.provenance.combine} of detector {seq.detector.id} exposures from one visit.</li>
-          <li><Term t="zodi">Zodiacal light</Term> model subtracted (IRSA ZODI layer).</li>
-          <li>Excluded as saturated: {seq.provenance.saturation_flags.join(", ")}.</li>
-          {seq.provenance.near_saturation_flags && <li>Kept but marked as near saturation: {seq.provenance.near_saturation_flags.join(", ")}.</li>}
-          <li>Excluded as flagged: {seq.provenance.masked_flags.join(", ")}.</li>
-          <li>Reprojection: {seq.provenance.reprojection}; {seq.grid.orientation}.</li>
-          <li>Stretch: {seq.stretch.kind} (a={seq.stretch.a}), limits {seq.stretch.lo.toPrecision(3)}–{seq.stretch.hi.toPrecision(3)} {seq.stretch.unit} ({seq.stretch.percentiles[0]}th–{seq.stretch.percentiles[1]}th percentile of all frames), the same for every frame.</li>
-          <li>No frame is interpolated or invented. No automated detection or AI is used.</li>
-          <li>Built {seq.provenance.built_at}{seq.provenance.queried_at ? `, archive searched ${seq.provenance.queried_at}` : ""}.</li>
+      <details>
+        <summary>How each frame is made</summary>
+        <ul className="how">
+          <li>Data: {seq.provenance.source}, collections {(seq.provenance.collections ?? []).join(", ")}.</li>
+          <li>Each frame is the {seq.provenance.combine} of one detector's exposures from one visit.</li>
+          <li><Term t="zodi">Zodiacal light</Term> subtracted using IRSA's model.</li>
+          <li>Left out as saturated: {seq.provenance.saturation_flags.join(", ")}. Left out as flagged: {seq.provenance.masked_flags.join(", ")}.</li>
+          {seq.provenance.near_saturation_flags && <li>Kept but marked: {seq.provenance.near_saturation_flags.join(", ")}.</li>}
+          <li>{seq.provenance.reprojection}; {seq.grid.orientation}.</li>
+          <li>Display: asinh stretch with black at the sky level, the same for every frame. Smoothing is display-only; "True pixels" shows each pixel as recorded.</li>
+          <li>No frame is interpolated in time or invented. No automated detection or AI is used.</li>
         </ul>
       </details>
 
-      {frame && frame.exposures.length > 0 && (
-        <details className="panel-sec">
+      {frame && frame.exposures.length > 0 && !p.colour && (
+        <details>
           <summary>Exposures in this frame ({frame.exposures.length})</summary>
-          <ul className="small mono explist">
+          <ul className="explist num">
             {frame.exposures.map((e) => (
-              <li key={e.obs_id}>{e.obs_id}{e.time ? ` · ${e.time.slice(0, 16)}` : ""}{e.wavelength_um ? ` · ${e.wavelength_um.toFixed(3)} µm` : ""}{e.error ? ` · skipped: ${e.error}` : ""}</li>
+              <li key={e.obs_id}>{e.obs_id}{e.time ? `, ${e.time.slice(0, 16).replace("T", " ")}` : ""}{e.wavelength_um ? `, ${e.wavelength_um.toFixed(3)} µm` : ""}{e.error ? `, skipped (${e.error.slice(0, 60)})` : ""}</li>
             ))}
           </ul>
         </details>
       )}
 
-      <section className="panel-sec small">
-        <a href={`https://irsa.ipac.caltech.edu/applications/spherex`} target="_blank" rel="noreferrer">Open the IRSA SPHEREx Data Explorer ↗</a>
-        <span className="muted"> · for spectra, use its Spectrophotometry Tool at {seq.centre.ra.toFixed(5)}, {seq.centre.dec.toFixed(5)}</span>
+      <section>
+        <p className="quiet">For spectra at this position, open IRSA's <a href="https://irsa.ipac.caltech.edu/applications/spherex" target="_blank" rel="noreferrer">SPHEREx Data Explorer</a> and its Spectrophotometry Tool at {seq.centre.ra.toFixed(5)}, {seq.centre.dec.toFixed(5)}.</p>
       </section>
     </aside>
   );

@@ -21,7 +21,7 @@ from . import archive, coadd, config, render
 from .resolve import Target
 
 MAX_EXPOSURE_FRAMES = 80       # Exposures view cap (most recent kept)
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2   # 2: float32 frames + sky-black stretch
 
 Progress = Callable[[str, int, int], None]
 
@@ -84,7 +84,7 @@ def plan(req: Request) -> dict:
                    "n_available": len(ep.exposures)} for ep in epochs]
 
     ids = ",".join(e.obs_id for u in units for e in u)  # the exposure list is part of the key
-    key = hashlib.sha1(f"{cra:.5f}|{cdec:.5f}|{req.fov}|{req.det}|{req.view}|{ids}".encode()).hexdigest()[:16]
+    key = hashlib.sha1(f"v{SCHEMA_VERSION}|{cra:.5f}|{cdec:.5f}|{req.fov}|{req.det}|{req.view}|{ids}".encode()).hexdigest()[:16]
     return {"req": req, "centre": (cra, cdec), "centre_note": centre_note,
             "units": units, "labels": labels, "exposures": exposures,
             "meta": meta, "key": key,
@@ -159,6 +159,7 @@ def build_sequence(req: Request, out_dir: Path | None = None, progress: Progress
     for j, i in enumerate(keep):
         f, unit, lab = frames[i], used[i], p["labels"][i]
         render.write_gray(out_dir / f"frame_{j}.png", f.data, lo, hi)
+        render.write_float(out_dir / f"frame_{j}.f32", f.data)
         render.write_mask(out_dir / f"mask_{j}.png", f.pixclass)
         np.save(out_dir / f"frame_{j}.npy", f.data)  # for difference / spectra tiers
         t_start = min(e.t_min for e in unit)
@@ -180,7 +181,7 @@ def build_sequence(req: Request, out_dir: Path | None = None, progress: Progress
             summary = (f"Survey {lab['survey']}, detector {det}, {band[0]:.2f}–{band[1]:.2f} µm, "
                        f"{len(unit)} exposure{'s' if len(unit) != 1 else ''}, {d0} to {d1}, {lab['release']}")
         out_frames.append({
-            "index": j, "png": f"frame_{j}.png", "mask": f"mask_{j}.png",
+            "index": j, "png": f"frame_{j}.png", "mask": f"mask_{j}.png", "f32": f"frame_{j}.f32",
             "release": lab["release"], "survey": lab["survey"],
             "date_start": d0, "date_end": d1,
             "time_mid": Time(t_mid, format="mjd").isot[:19] + "Z",

@@ -60,3 +60,10 @@ def write_rgb(path: Path, r: np.ndarray, g: np.ndarray, b: np.ndarray,
     rgb[bad] = 0
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(np.flipud(rgb), mode="RGB").save(path, optimize=True)
+
+
+def write_float(path: Path, data: np.ndarray) -> None:
+    """Raw little-endian float32, rows top-down (north up), NaN kept. The
+    browser does the stretch, smoothing and colour from these real values."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.ascontiguousarray(np.flipud(data), dtype="<f4").tofile(path)

@@ -168,12 +168,13 @@ def api_asteroids(key: str, frame: int):
 
 @app.get("/api/seq/{key}/{name}")
 def api_seq_file(key: str, name: str):
-    if not key.isalnum() or "/" in name or ".." in name or not name.endswith((".png", ".json")):
+    if not key.isalnum() or "/" in name or ".." in name or not name.endswith((".png", ".json", ".f32")):
         raise HTTPException(400, "bad path")
     p = config.CACHE_DIR / "seq" / key / name
     if not p.exists():
         raise HTTPException(404, "not found")
-    return FileResponse(p, headers={"Cache-Control": "public, max-age=86400"})
+    mt = "application/octet-stream" if name.endswith(".f32") else None
+    return FileResponse(p, media_type=mt, headers={"Cache-Control": "public, max-age=86400"})
 
 
 # --- built frontend (same origin, one deploy) -------------------------------------

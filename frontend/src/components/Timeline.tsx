@@ -1,93 +1,59 @@
 import type { FrameMeta, View } from "../lib/types";
 import { daysBetween } from "../lib/coords";
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export function monthSpan(a: string, b: string): string {
+  const [ya, ma] = a.split("-").map(Number);
+  const [yb, mb] = b.split("-").map(Number);
+  if (ya === yb && ma === mb) return `${MONTHS[ma - 1]} ${ya}`;
+  if (ya === yb) return `${MONTHS[ma - 1]}–${MONTHS[mb - 1]} ${ya}`;
+  return `${MONTHS[ma - 1]} ${ya} – ${MONTHS[mb - 1]} ${yb}`;
+}
+
+export function longDate(d: string): string {
+  const [y, m, day] = d.split("-").map(Number);
+  return `${day} ${MONTHS[m - 1]} ${y}`;
+}
+
 interface Props {
   frames: FrameMeta[];
   index: number;
   onIndex: (i: number) => void;
   playing: boolean;
   onPlaying: (p: boolean) => void;
-  fps: number;
-  onFps: (f: number) => void;
   view: View;
-  highlight?: [number, number];
+  marks?: [number, number];   // A and B when comparing
 }
 
-function stopLabel(f: FrameMeta, view: View): string {
-  if (view === "exposures") return f.time_mid.slice(5, 16).replace("T", " ");
-  return `S${f.survey} · ${f.date_start.slice(0, 7)}`;
-}
-
-export default function Timeline({ frames, index, onIndex, playing, onPlaying, fps, onFps, view, highlight }: Props) {
+export default function Timeline({ frames, index, onIndex, playing, onPlaying, view, marks }: Props) {
   const n = frames.length;
-  const canPlay = n > 1;
-  const cur = frames[index];
+  const label = (f: FrameMeta) => view === "exposures" ? f.time_mid.slice(5, 16).replace("T", " ") : monthSpan(f.date_start, f.date_end);
   return (
-    <div className="timeline" aria-label="Timeline">
-      <div className="tl-controls">
-        <button
-          className="btn icon"
-          onClick={() => onPlaying(!playing)}
-          disabled={!canPlay}
-          aria-label={playing ? "Pause (Space)" : "Play (Space)"}
-          title={canPlay ? (playing ? "Pause (Space)" : "Play (Space)") : "Only one epoch so far"}
-        >
-          {playing ? "❚❚" : "▶"}
-        </button>
-        <button className="btn icon" onClick={() => onIndex(Math.max(0, index - 1))} disabled={index <= 0} aria-label="Previous frame (←)">‹</button>
-        <button className="btn icon" onClick={() => onIndex(Math.min(n - 1, index + 1))} disabled={index >= n - 1} aria-label="Next frame (→)">›</button>
-        <label className="tl-speed">
-          <span className="sr-only">Playback speed</span>
-          <select value={fps} onChange={(e) => onFps(Number(e.target.value))} disabled={!canPlay}>
-            <option value={0.5}>0.5 frame/s</option>
-            <option value={1}>1 frame/s</option>
-            <option value={2}>2 frames/s</option>
-          </select>
-        </label>
-        <div className="tl-now" aria-live="polite">
-          {cur ? (
-            <>
-              <strong>{view === "exposures" ? "Exposure" : `Survey ${cur.survey}`}</strong>{" "}
-              <span className="mono">{view === "exposures" ? cur.time_mid.replace("T", " ").slice(0, 16) + " UTC" : `${cur.date_start} → ${cur.date_end}`}</span>
-              <span className="pill">{cur.release}</span>
-            </>
-          ) : null}
-        </div>
+    <div className="timeline">
+      <button className="play" onClick={() => onPlaying(!playing)} disabled={n < 2}
+        aria-label={playing ? "Pause (Space)" : "Play (Space)"} title={n < 2 ? "Only one survey here so far" : "Space"}>
+        {playing ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1" /><rect x="9.5" y="2" width="3.5" height="12" rx="1" /></svg>
+          : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9.5-5.5z" /></svg>}
+      </button>
+      <div className="tl-line" role="radiogroup" aria-label={view === "exposures" ? "Exposures" : "Surveys"}>
+        {n > 14 ? (
+          <input type="range" min={0} max={n - 1} value={index} onChange={(e) => onIndex(Number(e.target.value))}
+            aria-label="Frame" aria-valuetext={frames[index]?.summary} />
+        ) : (
+          frames.map((f, i) => (
+            <div className="tl-seg" key={i}>
+              {i > 0 && <span className="tl-gap" aria-hidden="true">{daysBetween(frames[i - 1].date_start, f.date_start)} days</span>}
+              <button role="radio" aria-checked={i === index} aria-label={f.summary}
+                className={`tl-stop ${i === index ? "on" : ""} ${marks?.includes(i) ? "mark" : ""}`} onClick={() => onIndex(i)}>
+                <span className="tl-dot" aria-hidden="true">{marks ? (i === marks[0] ? "A" : i === marks[1] ? "B" : "") : ""}</span>
+                <span className="tl-when">{label(f)}</span>
+                <span className="tl-sub">{view === "exposures" ? f.release : `Survey ${f.survey}, ${f.release}`}</span>
+              </button>
+            </div>
+          ))
+        )}
       </div>
-      {n > 0 && (
-        <div className="tl-track">
-          <input
-            type="range"
-            min={0}
-            max={Math.max(0, n - 1)}
-            step={1}
-            value={index}
-            onChange={(e) => onIndex(Number(e.target.value))}
-            disabled={n < 2}
-            aria-label="Frame"
-            aria-valuetext={cur?.summary}
-          />
-          {n <= 12 && (
-            <ol className="tl-stops" style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}>
-              {frames.map((f, i) => (
-                <li key={i} className={[i === index ? "on" : "", highlight && highlight.includes(i) ? "hl" : ""].join(" ")}>
-                  <button onClick={() => onIndex(i)} aria-label={f.summary}>
-                    <span className="stop-label">{stopLabel(f, view)}</span>
-                    {i > 0 && (
-                      <span className="gap" title="True time between this stop and the previous one">
-                        +{daysBetween(frames[i - 1].date_start, f.date_start)} d
-                      </span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      )}
-      <p className="tl-note">
-        Stops are evenly spaced for easy stepping; the real dates and gaps are printed. Playback speed has nothing to do with real elapsed time.
-      </p>
     </div>
   );
 }

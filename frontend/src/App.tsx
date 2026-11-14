@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { fetchFeatured } from "./lib/api";
-import type { FeaturedCard } from "./lib/types";
+import { hasLocation, readUrl } from "./lib/url";
+import type { FeaturedCard, TargetInfo } from "./lib/types";
 import Explorer from "./components/Explorer";
 import Featured from "./components/Featured";
 import About from "./components/About";
+import SearchBox from "./components/SearchBox";
 
 type Page = "explore" | "featured" | "about";
 
@@ -16,26 +18,24 @@ function pageOf(path: string): Page {
 export default function App() {
   const [page, setPage] = useState<Page>(() => pageOf(window.location.pathname));
   const [featured, setFeatured] = useState<FeaturedCard[]>([]);
-  const [dataAsOf, setDataAsOf] = useState<string | null>(null);
-  const [builtAt, setBuiltAt] = useState<string | null>(null);
-  const [navKey, setNavKey] = useState(0);
   const [featuredReady, setFeaturedReady] = useState(false);
+  const [dataAsOf, setDataAsOf] = useState<string | null>(null);
+  const [navKey, setNavKey] = useState(0);
+  const [, force] = useState(0);
 
   useEffect(() => {
     fetchFeatured().then((ix) => {
       setFeaturedReady(true);
-      if (!ix) return;
-      setFeatured(ix.cards);
-      setBuiltAt(ix.data_as_of ?? ix.built_at?.slice(0, 10) ?? null);
+      if (ix) setFeatured(ix.cards);
     });
-    const onPop = () => setPage(pageOf(window.location.pathname));
+    const onPop = () => { setPage(pageOf(window.location.pathname)); force((x) => x + 1); };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   const go = (to: string) => {
     window.history.pushState(null, "", to);
-    setPage(pageOf(to));
+    setPage(pageOf(to.split("?")[0]));
     setNavKey((k) => k + 1);
     window.scrollTo(0, 0);
   };
@@ -44,6 +44,10 @@ export default function App() {
     e.preventDefault();
     go(to);
   };
+  const onResolved = (t: TargetInfo) =>
+    go(t.kind === "coords" ? `/?ra=${t.ra.toFixed(5)}&dec=${t.dec.toFixed(5)}&fov=10` : `/?q=${encodeURIComponent(t.query)}&fov=10`);
+  const onPick = (c: FeaturedCard) => go(`/?target=${c.slug}&det=${c.det}&fov=${c.fov}${c.compare && c.compare !== "none" ? `&cmp=${c.compare}` : ""}`);
+  const exploring = page === "explore" && hasLocation(readUrl());
 
   return (
     <div className={`app ${page === "explore" ? "fill" : ""}`}>
@@ -53,20 +57,21 @@ export default function App() {
           <span className="brand-mark" aria-hidden="true" />
           <span className="brand-name">Lost in the Spectrum</span>
         </a>
+        {exploring && <SearchBox key={navKey} featured={featured} onPickFeatured={onPick} onResolved={onResolved} compact />}
         <nav aria-label="Main">
           <a href="/" onClick={link("/")} aria-current={page === "explore" ? "page" : undefined}>Explore</a>
           <a href="/featured" onClick={link("/featured")} aria-current={page === "featured" ? "page" : undefined}>Featured</a>
-          <a href="/about" onClick={link("/about")} aria-current={page === "about" ? "page" : undefined}><span className="nav-long">About &amp; Data</span><span className="nav-short">About</span></a>
+          <a href="/about" onClick={link("/about")} aria-current={page === "about" ? "page" : undefined}><span className="nav-long">About the data</span><span className="nav-short">About</span></a>
         </nav>
       </header>
       <div id="content">
-        {page === "explore" && <Explorer key={navKey} featured={featured} featuredReady={featuredReady} onDataDate={setDataAsOf} />}
-        {page === "featured" && <Featured cards={featured} onOpen={(c) => go(`/?target=${c.slug}&det=${c.det}&fov=${c.fov}${c.view !== "survey" ? `&view=${c.view}` : ""}${c.compare && c.compare !== "none" ? `&cmp=${c.compare}` : ""}`)} />}
+        {page === "explore" && <Explorer key={navKey} featured={featured} featuredReady={featuredReady} onDataDate={setDataAsOf} onNavigate={go} />}
+        {page === "featured" && <Featured cards={featured} onOpen={onPick} />}
         {page === "about" && <About />}
       </div>
       <footer className="footer">
-        <span>Latest SPHEREx exposure shown: {dataAsOf ?? builtAt ?? "see each frame"} · NASA/IPAC Infrared Science Archive</span>
-        <span>No AI in this site: every frame is real data, every step is conventional processing.</span>
+        <span>{dataAsOf ? `Newest SPHEREx exposure shown: ${dataAsOf}.` : "SPHEREx images from the NASA/IPAC Infrared Science Archive."}</span>
+        <span>Every frame is real data, processed by conventional steps. No AI runs on this site.</span>
       </footer>
     </div>
   );

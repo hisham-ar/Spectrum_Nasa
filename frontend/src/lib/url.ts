@@ -16,9 +16,11 @@ export interface UrlState {
   flags: boolean;      // tint saturated / flagged pixels
   marker: boolean;
   ast: boolean;        // known-asteroid overlay (Every-exposure view)
+  col: boolean;        // false colour from three detectors
+  px: boolean;         // true pixels (no display smoothing)
 }
 
-export const DEFAULTS: UrlState = { fov: 10, det: 3, view: "survey", cmp: "none", flags: false, marker: true, ast: false };
+export const DEFAULTS: UrlState = { fov: 10, det: 3, view: "survey", cmp: "none", flags: false, marker: true, ast: false, col: false, px: false };
 
 function num(v: string | null): number | undefined {
   if (v === null || v.trim() === "") return undefined;
@@ -37,7 +39,7 @@ export function readUrl(search = window.location.search): UrlState {
     ra: num(p.get("ra")),
     dec: num(p.get("dec")),
     target: p.get("target") || undefined,
-    fov: fov && fov > 0 ? Math.min(fov, 20) : DEFAULTS.fov,
+    fov: fov && fov > 0 ? Math.min(fov, 20) : DEFAULTS.fov,  // a featured card sets its own field
     det: det && det >= 1 && det <= 6 ? Math.round(det) : DEFAULTS.det,
     view,
     frame: num(p.get("frame")),
@@ -47,6 +49,8 @@ export function readUrl(search = window.location.search): UrlState {
     flags: p.get("flags") === "1",
     marker: p.get("marker") !== "0",
     ast: p.get("ast") === "1",
+    col: p.get("col") === "1",
+    px: p.get("px") === "1",
   };
 }
 
@@ -70,6 +74,8 @@ export function toSearch(s: UrlState): string {
   if (s.flags) p.set("flags", "1");
   if (!s.marker) p.set("marker", "0");
   if (s.ast) p.set("ast", "1");
+  if (s.col) p.set("col", "1");
+  if (s.px) p.set("px", "1");
   return "?" + p.toString();
 }
 

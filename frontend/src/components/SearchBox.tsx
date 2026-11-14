@@ -65,7 +65,7 @@ export default function SearchBox({ featured, onPickFeatured, onResolved, compac
           type="search"
           value={text}
           autoFocus={autoFocus}
-          placeholder={compact ? "Name or coordinates" : "Star name or coordinates — try “Barnard's Star” or “269.45 4.77”"}
+          placeholder={compact ? "Search a star or coordinates" : "A star's name, or coordinates like 269.45 4.77"}
           aria-label="Search by object name or coordinates"
           aria-autocomplete="list"
           aria-expanded={open && sugg.length > 0}
@@ -78,16 +78,16 @@ export default function SearchBox({ featured, onPickFeatured, onResolved, compac
             if (e.key === "Escape") setOpen(false);
           }}
         />
-        <button className="btn primary" type="submit" disabled={busy || !q}>{busy ? "…" : "Go"}</button>
+        <button className="go" type="submit" disabled={busy || !q}>{busy ? "Looking up" : "Find"}</button>
       </form>
       {open && sugg.length > 0 && (
         <ul className="sugg" id="search-sugg" role="listbox">
           {sugg.map((s, i) => (
             <li key={i} role="option" aria-selected={i === active} className={i === active ? "on" : ""}
                 onMouseDown={(e) => { e.preventDefault(); go(s); }} onMouseEnter={() => setActive(i)}>
-              {s.kind === "featured" && <><span>{s.card.name}</span><span className="pill">{s.card.category}</span><span className="pill ok">ready</span></>}
-              {s.kind === "coords" && <><span className="mono">{s.text}</span><span className="pill">Coordinates</span></>}
-              {s.kind === "lookup" && <><span>Look up “{s.text}”</span><span className="pill">SIMBAD name</span></>}
+              {s.kind === "featured" && <><span>{s.card.name}</span><span className="tag">opens instantly</span></>}
+              {s.kind === "coords" && <><span className="num">{s.text}</span><span className="tag">coordinates</span></>}
+              {s.kind === "lookup" && <><span>Look up “{s.text}”</span><span className="tag">by name, via SIMBAD</span></>}
             </li>
           ))}
         </ul>

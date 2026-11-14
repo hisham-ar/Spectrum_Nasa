@@ -107,7 +107,8 @@ def main() -> int:
                 prev = json.loads(existing.read_text(encoding="utf-8")) if existing.exists() else {}
                 pf = prev.get("frames", [])
                 complete = (len(pf) == len(p["units"]) and not any(f.get("n_failed") for f in pf)) if pf else not p["units"]
-                up_to_date = not args.force and prev.get("key") == p["key"] and complete
+                up_to_date = (not args.force and prev.get("key") == p["key"] and complete
+                              and prev.get("schema") == frames.SCHEMA_VERSION)
                 cached = len(exps) if up_to_date else sum(archive.is_cached_exposure(e, cra, cdec, size) for e in exps)
                 jobs.append({"card": card, "det": det, "view": view, "req": req, "plan": p, "out": out,
                              "n": len(exps), "cached": cached, "skip": up_to_date})
