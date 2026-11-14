@@ -19,9 +19,11 @@ export default function App() {
   const [dataAsOf, setDataAsOf] = useState<string | null>(null);
   const [builtAt, setBuiltAt] = useState<string | null>(null);
   const [navKey, setNavKey] = useState(0);
+  const [featuredReady, setFeaturedReady] = useState(false);
 
   useEffect(() => {
     fetchFeatured().then((ix) => {
+      setFeaturedReady(true);
       if (!ix) return;
       setFeatured(ix.cards);
       setBuiltAt(ix.data_as_of ?? ix.built_at?.slice(0, 10) ?? null);
@@ -44,7 +46,7 @@ export default function App() {
   };
 
   return (
-    <div className="app">
+    <div className={`app ${page === "explore" ? "fill" : ""}`}>
       <a className="skip" href="#content">Skip to content</a>
       <header className="topbar">
         <a href="/" className="brand" onClick={link("/")} aria-label="Lost in the Spectrum, home">
@@ -54,11 +56,11 @@ export default function App() {
         <nav aria-label="Main">
           <a href="/" onClick={link("/")} aria-current={page === "explore" ? "page" : undefined}>Explore</a>
           <a href="/featured" onClick={link("/featured")} aria-current={page === "featured" ? "page" : undefined}>Featured</a>
-          <a href="/about" onClick={link("/about")} aria-current={page === "about" ? "page" : undefined}>About &amp; Data</a>
+          <a href="/about" onClick={link("/about")} aria-current={page === "about" ? "page" : undefined}><span className="nav-long">About &amp; Data</span><span className="nav-short">About</span></a>
         </nav>
       </header>
       <div id="content">
-        {page === "explore" && <Explorer key={navKey} featured={featured} onDataDate={setDataAsOf} />}
+        {page === "explore" && <Explorer key={navKey} featured={featured} featuredReady={featuredReady} onDataDate={setDataAsOf} />}
         {page === "featured" && <Featured cards={featured} onOpen={(c) => go(`/?target=${c.slug}&det=${c.det}&fov=${c.fov}${c.view !== "survey" ? `&view=${c.view}` : ""}${c.compare && c.compare !== "none" ? `&cmp=${c.compare}` : ""}`)} />}
         {page === "about" && <About />}
       </div>

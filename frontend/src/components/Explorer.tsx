@@ -22,10 +22,11 @@ export const CHALLENGE_TARGETS: { name: string; q: string; det: number; fov: num
 
 interface Props {
   featured: FeaturedCard[];
+  featuredReady: boolean;
   onDataDate: (d: string | null) => void;
 }
 
-export default function Explorer({ featured, onDataDate }: Props) {
+export default function Explorer({ featured, featuredReady, onDataDate }: Props) {
   const [st, setSt] = useState<UrlState>(() => readUrl());
   const [seq, setSeq] = useState<Sequence | null>(null);
   const [build, setBuild] = useState<BuildStatus | null>(null);
@@ -59,11 +60,12 @@ export default function Explorer({ featured, onDataDate }: Props) {
 
   const card = st.target ? featured.find((c) => c.slug === st.target) : undefined;
   const challenge = st.target ? CHALLENGE_TARGETS.find((c) => c.slug === st.target) : undefined;
-  const locKey = `${st.target ?? ""}|${st.q ?? ""}|${st.ra ?? ""}|${st.dec ?? ""}|${st.fov}|${st.det}|${st.view}|${card ? "c" : ""}`;
+  const locKey = `${featuredReady}|${st.target ?? ""}|${st.q ?? ""}|${st.ra ?? ""}|${st.dec ?? ""}|${st.fov}|${st.det}|${st.view}|${card ? "c" : ""}`;
 
   // --- load sequence --------------------------------------------------------------
   useEffect(() => {
     if (!hasLocation(st)) { setSeq(null); return; }
+    if (st.target && !featuredReady) return; // wait: the target may be pre-computed
     const ac = new AbortController();
     setErr(null); setBuild(null); setSeq(null); setLoaded([]); setPlaying(false);
     (async () => {

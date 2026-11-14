@@ -65,7 +65,7 @@ export default function SearchBox({ featured, onPickFeatured, onResolved, compac
           type="search"
           value={text}
           autoFocus={autoFocus}
-          placeholder="Star name or coordinates — try “Barnard's Star” or “269.45 4.77”"
+          placeholder={compact ? "Name or coordinates" : "Star name or coordinates — try “Barnard's Star” or “269.45 4.77”"}
           aria-label="Search by object name or coordinates"
           aria-autocomplete="list"
           aria-expanded={open && sugg.length > 0}

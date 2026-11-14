@@ -101,13 +101,17 @@ select { background: var(--bg-2); color: var(--text); border: 1px solid var(--li
 .det-count { font-size: 11px; color: var(--c); }
 
 .stage { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 0; }
+.app.fill { height: 100vh; }
+.app.fill #content { min-height: 0; }
+.app.fill .stage-main { min-height: 0; overflow: hidden; }
+.app.fill .panel { position: static; max-height: none; min-height: 0; }
 .stage-main { display: flex; flex-direction: column; min-width: 0; padding: 10px 14px 12px 18px; gap: 10px; }
 .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .stage-title { font-size: 18px; margin: 0 auto 0 0; font-weight: 650; }
 .zoom { display: inline-flex; gap: 4px; }
-.canvases { flex: 1; min-height: 340px; display: grid; gap: 8px; }
+.canvases { flex: 1 1 auto; min-height: 260px; display: grid; gap: 8px; }
 .canvases.two { grid-template-columns: 1fr 1fr; }
-.sky { position: relative; width: 100%; height: 100%; min-height: 320px; background: #070910; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: grab; }
+.sky { position: relative; width: 100%; height: 100%; min-height: 240px; background: #070910; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: grab; }
 .sky:active { cursor: grabbing; }
 .sky canvas { display: block; position: absolute; inset: 0; }
 .sky-label { position: absolute; left: 10px; top: 10px; background: rgba(7,9,16,.82); border: 1px solid var(--line-2); border-radius: 6px; padding: 3px 8px; font: 12px var(--mono); pointer-events: none; }
@@ -178,7 +182,11 @@ details.panel-sec summary { cursor: pointer; font-weight: 600; min-height: 32px;
 .footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 20px; padding: 12px 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 
 /* mobile */
+.nav-short { display: none; }
 @media (max-width: 900px) {
+  .app.fill { height: auto; }
+  .nav-long { display: none; }
+  .nav-short { display: inline; }
   .stage { grid-template-columns: 1fr; }
   .stage-main { padding: 10px 12px; }
   .canvases { min-height: 62vw; }
