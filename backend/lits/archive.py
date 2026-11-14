@@ -89,9 +89,12 @@ def _key(*parts) -> str:
 # --- SIA2 ----------------------------------------------------------------------
 
 def _col(table, *names):
+    lower = {c.lower(): c for c in table.colnames}
     for n in names:
         if n in table.colnames:
             return table[n]
+        if n.lower() in lower:
+            return table[lower[n.lower()]]
     return None
 
 
@@ -100,12 +103,15 @@ def query_collection(collection: str, ra: float, dec: float, radius_deg: float =
     r = client().get(config.SIA2_URL, params=params)
     r.raise_for_status()
     vot = parse_votable(io.BytesIO(r.content), verify="ignore")
-    table = vot.get_first_table().to_table()
+    # FIELD names (ObsCore: access_url, t_min, ...), not their internal IDs
+    table = vot.get_first_table().to_table(use_names_over_ids=True)
     out: list[Exposure] = []
     if len(table) == 0:
         return out
     urls = _col(table, "access_url")
     bands = _col(table, "energy_bandpassname")
+    if urls is None or bands is None:
+        raise RuntimeError(f"Unexpected SIA2 columns from {collection}: {table.colnames[:60]}")
     tmin = _col(table, "t_min")
     tmax = _col(table, "t_max")
     obs = _col(table, "obs_id", "obs_publisher_did")

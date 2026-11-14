@@ -185,7 +185,7 @@ def resolve(query: str, client: httpx.Client | None = None) -> Target:
                       label="Coordinates",
                       notes=["Typed coordinates are used as given and never moved for proper motion."])
     own = client is None
-    client = client or httpx.Client(timeout=config.HTTP_TIMEOUT,
+    client = client or httpx.Client(timeout=config.HTTP_TIMEOUT, follow_redirects=True,
                                     headers={"User-Agent": config.USER_AGENT})
     try:
         r = client.get(SESAME_URL.format(q=quote(q)))
