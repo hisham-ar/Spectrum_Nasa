@@ -29,6 +29,8 @@ export interface FrameMeta {
   exposures: ExposureMeta[];
   wavelength_range_um: [number, number] | null;
   saturated_px: number;
+  near_saturated_px?: number;
+  n_failed?: number;
   flagged_px: number;
   outside_px: number;
   marker: Marker | null;
@@ -68,7 +70,7 @@ export interface Sequence {
   coverage: Record<string, EpochSummary[]>;
   comparability: { mixed_releases: boolean; channel_mix_differs: boolean; notes: string[] };
   provenance: Record<string, unknown> & {
-    combine: string; saturation_flags: string[]; masked_flags: string[];
+    combine: string; saturation_flags: string[]; masked_flags: string[]; near_saturation_flags?: string[];
     reprojection: string; collections?: string[]; queried_at?: string; built_at: string; source: string;
   };
   timings?: Record<string, number>;

@@ -60,6 +60,11 @@ function compose(f: LoadedFrame, d: Display): HTMLCanvasElement {
     if (m === 3) [r, g, b] = OUTSIDE_RGB;
     else if (m === 1) [r, g, b] = d.showFlags ? SAT_RGB : [0, 0, 0];
     else if (m === 2) [r, g, b] = d.showFlags ? FLAG_RGB : [0, 0, 0];
+    else if (m === 4 && d.showFlags) {
+      // near saturation (OVERFLOW): data kept, half-tinted so it is never used silently
+      const v = lut[f.gray[i]];
+      r = (v + SAT_RGB[0]) / 2; g = (v + 60) / 2; b = (v + SAT_RGB[2]) / 2;
+    }
     else r = g = b = lut[f.gray[i]];
     px[i * 4] = r; px[i * 4 + 1] = g; px[i * 4 + 2] = b; px[i * 4 + 3] = 255;
   }

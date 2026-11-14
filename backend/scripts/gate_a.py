@@ -154,6 +154,7 @@ def main() -> int:
               f"{report[f'cutouts_{name}']['mb_per_cutout_median']} MB each, {len(fails)} failed")
         if fails:
             print(f"  first failure: {fails[0]}")
+            report[f"cutouts_{name}"]["failures"] = fails[:3]
 
     sample = next((p for _, p, _ in results["first"][1] if p is not None), None)
     if sample is not None:

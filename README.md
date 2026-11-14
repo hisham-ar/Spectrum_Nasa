@@ -23,6 +23,25 @@ python backend\scripts\gate_a.py    # Gate A on real IRSA data
 Gate A writes `backend\scripts\out\gate_a\side_by_side.png`, `blink.gif` and `report.json`.
 Pass = Barnard's Star (circled) moves between the two frames and the background stars stay put.
 
+### Pre-compute the Featured targets, then run the site
+
+```powershell
+python backend\scripts\build_featured.py --only barnard   # lead demo, all 6 detectors (~15 min cold)
+python backend\scripts\build_featured.py --default-only    # every card, its default detector
+cd backend
+uvicorn lits.api:app --port 8000                           # then open http://localhost:8000
+```
+
+The backend serves the built site from `frontend\dist`, so Node is only needed to change the frontend
+(`cd frontend; npm install; npm run build`).
+
+### Gate A result (2026-11-14)
+
+Barnard's Star, detector 3, 10′ field: 3 epochs per detector (Survey 1 DR1 Aug 2025, Survey 2 DR1 Mar–May 2026,
+Survey 3 QR3 Aug 2026). Background-star offset between the first and last co-add 0.01 px; the saturated core moved
+1.73 px north against a predicted 1.68 px. Cutouts take 12–15 s and 4.4 MB each (3.9 MB of that is the PSF layer),
+so live searches sample up to 8 exposures per survey and Featured builds up to 24.
+
 Downloaded cutouts are cached in `%LOCALAPPDATA%\lits-cache` (outside OneDrive).
 Set `LITS_CACHE_DIR` to put them elsewhere.
 

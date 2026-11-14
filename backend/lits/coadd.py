@@ -21,9 +21,14 @@ from . import config
 
 warnings.simplefilter("ignore", FITSFixedWarning)
 warnings.simplefilter("ignore", AstropyWarning)
+# SPHEREx headers carry SIP terms without "-SIP" in CTYPE; astropy applies them
+# (which is what we want: Gate A measured 0.01 px background alignment) and
+# logs an INFO note for every file. Keep the log readable.
+from astropy import log as _astropy_log  # noqa: E402
+_astropy_log.setLevel("WARNING")
 
 # Output pixel classes (sent to the browser as a small mask PNG)
-GOOD, SATURATED, FLAGGED, OUTSIDE = 0, 1, 2, 3
+GOOD, SATURATED, FLAGGED, OUTSIDE, NEAR_SATURATED = 0, 1, 2, 3, 4
 
 
 def target_grid(ra: float, dec: float, fov_arcmin: float) -> tuple[WCS, tuple[int, int]]:
@@ -53,11 +58,13 @@ class LoadedExposure:
     variance: np.ndarray
     saturated: np.ndarray     # bool
     flagged: np.ndarray       # bool (non-saturation bad pixels)
+    near_sat: np.ndarray      # bool (OVERFLOW: kept, but tinted)
     wcs: WCS
     wavelength_um: float | None
     bandwidth_um: float | None
     n_sat: int
     n_flagged: int
+    n_near: int
     header: dict = field(default_factory=dict)
 
 
@@ -91,12 +98,13 @@ def load_exposure(path: Path, ra: float, dec: float) -> LoadedExposure:
 
     sat = (flags & config.SATURATION_MASK) != 0
     bad = ((flags & config.BAD_MASK) != 0) & ~sat
+    near = ((flags & config.NEAR_SATURATION_MASK) != 0) & ~sat & ~bad
     data = image - zodi
     unusable = sat | bad | ~np.isfinite(data) | ~np.isfinite(var) | (var <= 0)
     data[unusable] = np.nan
     var[unusable] = np.nan
-    return LoadedExposure(path, data, var, sat, bad, wcs, wl, bw,
-                          int(sat.sum()), int(bad.sum()), hdr)
+    return LoadedExposure(path, data, var, sat, bad, near, wcs, wl, bw,
+                          int(sat.sum()), int(bad.sum()), int(near.sum()), hdr)
 
 
 @dataclass
@@ -113,6 +121,7 @@ def coadd(exposures: list[LoadedExposure], wcs_out: WCS, shape: tuple[int, int],
     ny, nx = shape
     stack_d, stack_w = [], []
     sat_any = np.zeros(shape, bool)
+    near_any = np.zeros(shape, bool)
     covered = np.zeros(shape, bool)
     for ex in exposures:
         d, _ = reproject_interp((ex.data, ex.wcs), wcs_out, shape_out=shape, order="bilinear")
@@ -124,6 +133,10 @@ def coadd(exposures: list[LoadedExposure], wcs_out: WCS, shape: tuple[int, int],
         inside = fp > 0
         covered |= inside
         sat_any |= inside & (np.nan_to_num(s) > 0.5)
+        if ex.n_near:
+            q, _ = reproject_interp((ex.near_sat.astype(np.float32), ex.wcs), wcs_out,
+                                    shape_out=shape, order="nearest-neighbor")
+            near_any |= inside & (np.nan_to_num(q) > 0.5)
         good = inside & np.isfinite(d) & np.isfinite(v) & (v > 0)
         stack_d.append(np.where(good, d, np.nan))
         stack_w.append(np.where(good, 1.0 / np.where(v > 0, v, np.inf), 0.0))
@@ -144,6 +157,7 @@ def coadd(exposures: list[LoadedExposure], wcs_out: WCS, shape: tuple[int, int],
     cls = np.full(shape, GOOD, np.uint8)
     cls[~covered] = OUTSIDE
     cls[covered & (nexp == 0)] = FLAGGED
+    cls[near_any & (nexp > 0)] = NEAR_SATURATED
     cls[sat_any] = SATURATED
     wls = [ex.wavelength_um for ex in exposures if ex.wavelength_um is not None]
     return Frame(out.astype(np.float32), cls, nexp, len(exposures), wls)

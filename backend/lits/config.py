@@ -72,7 +72,12 @@ FLAG_BITS: dict[str, int] = {
 }
 
 # Saturation class: excluded from the co-add and tinted as "saturated".
-SATURATION_FLAGS = ["OVERFLOW", "NONLINEAR", "BLOOM"]
+SATURATION_FLAGS = ["NONLINEAR", "BLOOM"]
+# Near-saturation: OVERFLOW pixels stopped integrating early but still carry a
+# valid, nonlinearity-corrected estimate, and IRSA's own Spectrophotometry Tool
+# keeps them. We keep them too, count them, and tint them separately so they
+# are never used silently. Move "OVERFLOW" to SATURATION_FLAGS to exclude them.
+NEAR_SATURATION_FLAGS = ["OVERFLOW"]
 # Other bad pixels: excluded from the co-add and tinted as "flagged".
 BAD_FLAGS = [
     "TRANSIENT", "SUR_ERROR", "NONFUNC", "DICHROIC", "MISSING_DATA", "HOT",
@@ -89,6 +94,7 @@ def flag_mask(names: list[str]) -> int:
     return m
 
 SATURATION_MASK = flag_mask(SATURATION_FLAGS)
+NEAR_SATURATION_MASK = flag_mask(NEAR_SATURATION_FLAGS)
 BAD_MASK = flag_mask(BAD_FLAGS)
 
 # --- Viewer ------------------------------------------------------------------
@@ -119,5 +125,9 @@ QUERY_CACHE_SECONDS = 24 * 3600  # IRSA ingests weekly; SIA2 lags ~1 day
 FEATURED_DIR = Path(os.environ.get("LITS_FEATURED_DIR", ROOT.parent / "frontend" / "public" / "featured"))
 
 HTTP_TIMEOUT = float(os.environ.get("LITS_HTTP_TIMEOUT", "120"))
+# Gate A: IRSA cutouts take ~12-15 s each (4.4 MB, 90% of it the PSF layer).
+# Live searches sample fewer exposures per survey; Featured builds use more.
+LIVE_MAX_EXPOSURES_PER_EPOCH = int(os.environ.get("LITS_LIVE_MAX_PER_EPOCH", "8"))
+FEATURED_MAX_EXPOSURES_PER_EPOCH = int(os.environ.get("LITS_FEATURED_MAX_PER_EPOCH", "24"))
 MAX_PARALLEL_DOWNLOADS = int(os.environ.get("LITS_MAX_PARALLEL", "6"))
 USER_AGENT = "LostInTheSpectrum/0.1 (NASA Space Apps 2026)"

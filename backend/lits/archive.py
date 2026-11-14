@@ -268,7 +268,7 @@ def fetch_cutout(access_url: str, ra: float, dec: float, size_arcmin: float) -> 
             return path, CutoutStats(url, round(time.time() - t0, 2), len(r.content), False)
         except Exception as e:  # noqa: BLE001
             last = e
-            time.sleep(1.5 * (attempt + 1))
+            time.sleep(3.0 * (attempt + 1))
     raise RuntimeError(f"Cutout failed after 3 tries: {url}: {last}")
 
 
@@ -276,6 +276,7 @@ def fetch_many(exposures: list[Exposure], ra: float, dec: float, size_arcmin: fl
                progress: Callable[[int, int], None] | None = None) -> list[tuple[Exposure, Path, CutoutStats]]:
     out: list[tuple[Exposure, Path, CutoutStats]] = []
     done = 0
+    failed: list[Exposure] = []
     with ThreadPoolExecutor(max_workers=config.MAX_PARALLEL_DOWNLOADS) as pool:
         futs = {pool.submit(fetch_cutout, e.access_url, ra, dec, size_arcmin): e for e in exposures}
         for fut in futs:
@@ -283,9 +284,19 @@ def fetch_many(exposures: list[Exposure], ra: float, dec: float, size_arcmin: fl
             try:
                 p, s = fut.result()
                 out.append((e, p, s))
-            except Exception as ex:  # noqa: BLE001 - a missing exposure is reported, not fatal
-                out.append((e, None, CutoutStats(str(ex), 0.0, 0, False)))  # type: ignore[arg-type]
-            done += 1
-            if progress:
-                progress(done, len(exposures))
+                done += 1
+                if progress:
+                    progress(done, len(exposures))
+            except Exception:  # noqa: BLE001 - retried below, one at a time
+                failed.append(e)
+    # Second pass, one at a time: Gate A lost 6 of 35 cutouts in parallel.
+    for e in failed:
+        try:
+            p, s = fetch_cutout(e.access_url, ra, dec, size_arcmin)
+            out.append((e, p, s))
+        except Exception as ex:  # noqa: BLE001 - a missing exposure is reported, not fatal
+            out.append((e, None, CutoutStats(f"{type(ex).__name__}: {ex}", 0.0, 0, False)))  # type: ignore[arg-type]
+        done += 1
+        if progress:
+            progress(done, len(exposures))
     return out

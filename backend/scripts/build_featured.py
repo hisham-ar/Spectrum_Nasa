@@ -60,7 +60,8 @@ def main() -> int:
                 out = OUT / folder
                 if out.exists():
                     shutil.rmtree(out)
-                req = frames.Request(ra=ra, dec=dec, fov=card["fov"], det=det, view=view, target=tgt)
+                req = frames.Request(ra=ra, dec=dec, fov=card["fov"], det=det, view=view, target=tgt,
+                                     max_per_epoch=config.FEATURED_MAX_EXPOSURES_PER_EPOCH)
                 def prog(stage, done, total, _d=det):
                     print(f"\r  {slug} D{_d} {view}: {stage} {done}/{total}   ", end="", flush=True)
                 seq = frames.build_sequence(req, out_dir=out, progress=prog)

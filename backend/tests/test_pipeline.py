@@ -181,3 +181,19 @@ def test_sesame_and_proper_motion():
     assert (ra - t.ra) * 3600 * np.cos(np.radians(dec)) < 0  # drifts west
     c = Target(kind="coords", query="1 2", ra=1.0, dec=2.0)
     assert c.position_at(Time("2030-01-01")) == (1.0, 2.0)
+
+
+def test_overflow_pixels_kept_but_marked(tmp_path):
+    n = 160
+    p = tmp_path / "o.fits"
+    write_mef(p, make_wcs(0.0, n), n, (RA0, DEC0), seed=3)
+    with fits.open(p, mode="update") as h:
+        x, y = map(float, make_wcs(0.0, n).world_to_pixel_values(RA0, DEC0))
+        h["FLAGS"].data[int(round(y)), int(round(x))] |= 1 << config.FLAG_BITS["OVERFLOW"]
+    ex = coadd.load_exposure(p, RA0, DEC0)
+    assert ex.n_near >= 1 and ex.n_sat == 0
+    wcs_out, shape = coadd.target_grid(RA0, DEC0, 5.0)
+    f = coadd.coadd([ex], wcs_out, shape)
+    near = f.pixclass == coadd.NEAR_SATURATED
+    assert near.any()
+    assert np.isfinite(f.data[near]).all()   # used, not blanked

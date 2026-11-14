@@ -68,8 +68,8 @@ export default function DataPanel({ seq, frame, frameTag, display, onDisplay, vi
             <dt>At the centre</dt>
             <dd className="mono">{frame.wavelength_range_um ? `${frame.wavelength_range_um[0].toFixed(2)}–${frame.wavelength_range_um[1].toFixed(2)} µm` : "not recorded"}</dd>
             <dt>Exposures</dt>
-            <dd>{frame.n_exposures}{frame.n_available > frame.n_exposures ? ` of ${frame.n_available} (evenly sampled)` : ""}{view === "survey" ? <> · <Term t="co-add" /></> : " · single exposure"}</dd>
-            <dt><Term t="saturation">Saturated</Term></dt><dd>{frame.saturated_px} px</dd>
+            <dd>{frame.n_exposures - (frame.n_failed ?? 0)}{frame.n_available > frame.n_exposures ? ` of ${frame.n_available} (evenly sampled)` : ""}{frame.n_failed ? ` · ${frame.n_failed} could not be downloaded` : ""}{view === "survey" ? <> · <Term t="co-add" /></> : " · single exposure"}</dd>
+            <dt><Term t="saturation">Saturated</Term></dt><dd>{frame.saturated_px} px{frame.near_saturated_px ? ` · ${frame.near_saturated_px} px near saturation` : ""}</dd>
             <dt>Flagged</dt><dd>{frame.flagged_px} px</dd>
           </dl>
           <p className="sr-only" aria-live="polite">{frame.summary}</p>
@@ -82,11 +82,12 @@ export default function DataPanel({ seq, frame, frameTag, display, onDisplay, vi
           Show saturated and flagged pixels
         </label>
         <div className="legend small">
-          <span><i style={{ background: rgb(SAT_RGB) }} /> saturated</span>
+          <span><i style={{ background: rgb(SAT_RGB) }} /> saturated (left out)</span>
+          <span><i style={{ background: "rgb(190,110,180)" }} /> near saturation (kept)</span>
           <span><i style={{ background: rgb(FLAG_RGB) }} /> flagged / no usable data</span>
           <span><i style={{ background: "#151a24", border: "1px solid #2a3142" }} /> outside coverage</span>
         </div>
-        <p className="small muted">Bad pixels are never averaged in. With the tint off they show black, which is why the brightest stars have a black core.</p>
+        <p className="small muted">Saturated and flagged pixels are never averaged in; with the tint off they show black, which is why the brightest stars have a black core. Pixels that only came close to saturation are kept, as in IRSA's own photometry, but their brightness is less reliable.</p>
         {t?.moves && (
           <label className="check">
             <input type="checkbox" checked={display.showMarker} onChange={(e) => onDisplay({ ...display, showMarker: e.target.checked })} />
@@ -162,6 +163,7 @@ export default function DataPanel({ seq, frame, frameTag, display, onDisplay, vi
           <li>Each frame: {seq.provenance.combine} of detector {seq.detector.id} exposures from one visit.</li>
           <li><Term t="zodi">Zodiacal light</Term> model subtracted (IRSA ZODI layer).</li>
           <li>Excluded as saturated: {seq.provenance.saturation_flags.join(", ")}.</li>
+          {seq.provenance.near_saturation_flags && <li>Kept but marked as near saturation: {seq.provenance.near_saturation_flags.join(", ")}.</li>}
           <li>Excluded as flagged: {seq.provenance.masked_flags.join(", ")}.</li>
           <li>Reprojection: {seq.provenance.reprojection}; {seq.grid.orientation}.</li>
           <li>Stretch: {seq.stretch.kind} (a={seq.stretch.a}), limits {seq.stretch.lo.toPrecision(3)}–{seq.stretch.hi.toPrecision(3)} {seq.stretch.unit} ({seq.stretch.percentiles[0]}th–{seq.stretch.percentiles[1]}th percentile of all frames), the same for every frame.</li>

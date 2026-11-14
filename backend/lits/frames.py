@@ -20,7 +20,6 @@ from astropy.time import Time
 from . import archive, coadd, config, render
 from .resolve import Target
 
-MAX_EXPOSURES_PER_EPOCH = 24   # deep fields have hundreds; sample evenly in time
 MAX_EXPOSURE_FRAMES = 80       # Exposures view cap (most recent kept)
 SCHEMA_VERSION = 1
 
@@ -35,6 +34,7 @@ class Request:
     det: int = 3
     view: str = "survey"           # "survey" or "exposures"
     target: Target | None = None   # named object -> moving centre + markers
+    max_per_epoch: int = config.LIVE_MAX_EXPOSURES_PER_EPOCH  # sampled evenly in time
 
     def normalised(self) -> "Request":
         self.fov = float(min(max(self.fov, 1.0), config.FOV_MAX_ARCMIN))
@@ -79,11 +79,11 @@ def plan(req: Request) -> dict:
         units = [[e] for e in exps]
         labels = [{"release": e.release, "survey": archive.nominal_survey(e.t_mid)} for e in exps]
     else:
-        units = [_even_sample(ep.exposures, MAX_EXPOSURES_PER_EPOCH) for ep in epochs]
+        units = [_even_sample(ep.exposures, req.max_per_epoch) for ep in epochs]
         labels = [{"release": ep.release, "survey": ep.survey,
                    "n_available": len(ep.exposures)} for ep in epochs]
 
-    ids = ",".join(e.obs_id for u in units for e in u)
+    ids = ",".join(e.obs_id for u in units for e in u)  # the exposure list is part of the key
     key = hashlib.sha1(f"{cra:.5f}|{cdec:.5f}|{req.fov}|{req.det}|{req.view}|{ids}".encode()).hexdigest()[:16]
     return {"req": req, "centre": (cra, cdec), "centre_note": centre_note,
             "units": units, "labels": labels, "exposures": exposures,
@@ -129,6 +129,7 @@ def build_sequence(req: Request, out_dir: Path | None = None, progress: Progress
         for e in unit:
             path = paths.get(e.obs_id)
             if path is None:
+                ul.append({"obs_id": e.obs_id, "time": e.iso(), "error": f"download failed: {stats[e.obs_id].url[:200]}"})
                 continue
             try:
                 ex = coadd.load_exposure(path, cra, cdec)
@@ -139,7 +140,7 @@ def build_sequence(req: Request, out_dir: Path | None = None, progress: Progress
             um.append(e)
             ul.append({"obs_id": e.obs_id, "time": e.iso(), "wavelength_um": ex.wavelength_um,
                        "bandwidth_um": ex.bandwidth_um, "saturated_px": ex.n_sat,
-                       "flagged_px": ex.n_flagged})
+                       "flagged_px": ex.n_flagged, "near_saturated_px": ex.n_near})
         frames.append(coadd.coadd(loaded, wcs_out, shape))
         used.append(um)
         loaded_meta.append(ul)
@@ -181,9 +182,11 @@ def build_sequence(req: Request, out_dir: Path | None = None, progress: Progress
             "date_start": d0, "date_end": d1,
             "time_mid": Time(t_mid, format="mjd").isot[:19] + "Z",
             "n_exposures": len(unit), "n_available": lab.get("n_available", len(unit)),
+            "n_failed": sum(1 for x in loaded_meta[i] if "error" in x),
             "exposures": loaded_meta[i],
             "wavelength_range_um": [round(min(wls), 4), round(max(wls), 4)] if wls else None,
             "saturated_px": int((f.pixclass == coadd.SATURATED).sum()),
+            "near_saturated_px": int((f.pixclass == coadd.NEAR_SATURATED).sum()),
             "flagged_px": int((f.pixclass == coadd.FLAGGED).sum()),
             "outside_px": int((f.pixclass == coadd.OUTSIDE).sum()),
             "marker": marker, "summary": summary,
@@ -209,6 +212,7 @@ def build_sequence(req: Request, out_dir: Path | None = None, progress: Progress
             "zodi_subtracted": True,
             "combine": "inverse-variance weighted mean" if req.view == "survey" else "single exposure",
             "saturation_flags": config.SATURATION_FLAGS, "masked_flags": config.BAD_FLAGS,
+            "near_saturation_flags": config.NEAR_SATURATION_FLAGS,
             "reprojection": "bilinear onto a TAN grid at 6.15\"/px (astropy + reproject)",
             "collections": p["meta"].get("collections"), "queried_at": p["meta"].get("queried_at"),
             "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),

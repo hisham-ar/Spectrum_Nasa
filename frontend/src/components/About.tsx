@@ -19,7 +19,7 @@ export default function About() {
       <h2>Limits of the data — please read</h2>
       <ul>
         <li><strong>Coarse pixels.</strong> One pixel is 6.15 arcseconds. Only nearby, fast-moving stars shift visibly within a year or two.</li>
-        <li><strong>Saturation.</strong> Very bright stars overload the detector. Those pixels carry no measurement and are shown black, or tinted when you switch the tint on. They are never averaged in.</li>
+        <li><strong>Saturation.</strong> Very bright stars overload the detector. Those pixels carry no measurement and are shown black, or tinted when you switch the tint on. They are never averaged in. Pixels that only came close to saturation are kept, as IRSA's own photometry tool does, and tinted separately.</li>
         <li><strong>Flags.</strong> Pixels the SPHEREx pipeline flags (cosmic rays, hot pixels, persistence and others) are left out of each stack.</li>
         <li><strong>Releases.</strong> Frames are labelled DR1 or QR3. Different releases may be calibrated differently, so compare their brightness with care.</li>
         <li><strong>No verdicts.</strong> The site never decides whether something changed. It shows suitable observations; you look. A moving dot could be an asteroid, a cosmic ray, an artefact, or something uncatalogued.</li>
