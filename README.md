@@ -9,8 +9,9 @@ labelled with its true dates, detector, wavelengths and data release.
 
 ## Hosting
 
-The whole site runs as one container built from the `Dockerfile`. See [DEPLOY.md](DEPLOY.md)
-for the Google Cloud Run setup (deploys automatically from this repo).
+The site runs on Render's free plan from `render.yaml`: the website and Featured frames as a static
+site, live search as a small Python service. See [DEPLOY.md](DEPLOY.md), which also covers running
+the whole thing as one Docker container.
 
 ## Quick start (Windows, VS Code terminal / PowerShell)
 

@@ -1,9 +1,17 @@
 import type { AsteroidResult, BuildStatus, EpochSummary, FeaturedIndex, Sequence, TargetInfo, View } from "./types";
 
-const API = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
+export const API = ((import.meta.env.VITE_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
+
+export const UNREACHABLE = "The search server can't be reached right now. Featured targets still work.";
 
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<{ status: number; body: T }> {
-  const r = await fetch(url, { signal });
+  let r: Response;
+  try {
+    r = await fetch(url, { signal });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    throw new Error(UNREACHABLE);   // network failure: server down or unreachable
+  }
   let body: T;
   try {
     body = (await r.json()) as T;

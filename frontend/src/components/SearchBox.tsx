@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { resolveName } from "../lib/api";
+import { resolveName, UNREACHABLE } from "../lib/api";
+import { ensureAwake, useServerState } from "../lib/server";
 import { looksLikeCoords } from "../lib/coords";
 import type { FeaturedCard, TargetInfo } from "../lib/types";
 
@@ -20,6 +21,7 @@ export default function SearchBox({ featured, onPickFeatured, onResolved, compac
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
+  const server = useServerState();
 
   const q = text.trim();
   const sugg: Sugg[] = [];
@@ -41,15 +43,18 @@ export default function SearchBox({ featured, onPickFeatured, onResolved, compac
     if (s?.kind === "featured") { setOpen(false); onPickFeatured(s.card); return; }
     const term = s ? s.text : q;
     if (!term) return;
+    setOpen(false);
     setBusy(true);
     try {
+      await ensureAwake();
       const t = await resolveName(term);
       setOpen(false);
       onResolved(t);
     } catch (e) {
-      setError((e as Error).message.includes("fetch") || (e as Error).message.includes("Server returned")
+      const m = (e as Error).message;
+      setError(m === UNREACHABLE || m.includes("fetch") || m.includes("Server returned")
         ? "Live search is unavailable right now. The featured targets still work."
-        : (e as Error).message);
+        : m);
     } finally {
       setBusy(false);
     }
@@ -91,6 +96,9 @@ export default function SearchBox({ featured, onPickFeatured, onResolved, compac
             </li>
           ))}
         </ul>
+      )}
+      {busy && server === "waking" && (
+        <p className="search-note" role="status">Waking the search server. It sleeps when nobody has searched for a while, so this can take up to a minute.</p>
       )}
       {error && <p className="search-error" role="alert">{error}</p>}
     </div>

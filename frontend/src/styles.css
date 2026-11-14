@@ -56,6 +56,7 @@ kbd { font: 12px var(--ui); border: 1px solid var(--line); border-bottom-width: 
 .sugg li span:first-child { flex: 1; }
 .sugg li.on { background: var(--chrome-2); }
 .search-error { color: var(--gold); font-size: 13.5px; margin: 8px 2px 0; }
+.search-note { color: var(--muted); font-size: 13.5px; margin: 8px 2px 0; }
 .tag { display: inline-block; font-size: 12px; line-height: 20px; padding: 0 8px; border-radius: 6px; background: rgba(255,255,255,0.06); color: var(--muted); vertical-align: 2px; font-family: var(--ui); font-weight: 400; }
 
 /* ---- shared controls ---- */

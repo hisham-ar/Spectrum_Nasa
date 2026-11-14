@@ -1,65 +1,52 @@
-# Putting Lost in the Spectrum online (Google Cloud Run)
+# Putting Lost in the Spectrum online
 
-The whole site (pages, the pre-built Featured frames and live search) runs as **one container**
-built from the `Dockerfile` in this repo. Google Cloud builds it straight from GitHub, so nothing
-needs installing on your own computer, and every push to `main` redeploys automatically.
+## Render (current setup, free)
 
-Button names in the Google Cloud console change from time to time; if a label below doesn't
-match exactly, look for the closest one.
+`render.yaml` in this repo describes two free Render services:
 
-## 1. One-time account setup
-
-1. Go to **cloud.google.com/free** and start the free trial with your Google account
-   (a card is asked for to verify identity; the trial doesn't charge it).
-2. In the console, create a project, e.g. **lost-in-the-spectrum**.
-3. Optional but sensible: **Billing → Budgets & alerts → Create budget**, e.g. $100, with email
-   alerts. (A budget only warns; it doesn't switch anything off.)
-
-## 2. Create the service
-
-**Cloud Run → Create service** (or **Deploy container → Service**), then:
-
-| Setting | Value | Why |
+| Service | What it is | Sleeps? |
 |---|---|---|
-| Source | **Continuously deploy from a repository** → **Set up with Cloud Build** | Builds from GitHub on every push |
-| Repository | GitHub → authorise → pick this repo | |
-| Branch | `^main$` | |
-| Build type | **Dockerfile**, location `/Dockerfile` | |
-| Service name | `lost-in-the-spectrum` | Becomes part of the web address |
-| Region | **us-east4 (Northern Virginia)** | Next to the SPHEREx files on AWS us-east-1, so downloads are fast |
-| Authentication | **Allow public access** (allow unauthenticated invocations) | It's a public website |
-| Billing | **Instance-based** (CPU always allocated) | Live searches keep working between page requests |
-| Minimum instances | **1** | No wake-up wait for visitors |
-| Maximum instances | **1** | Search progress lives in one process |
-| Container port | `8080` | |
-| Memory / CPU | **2 GiB / 1 vCPU** | |
-| Startup CPU boost | On | Faster restarts |
+| `spectrum-nasa` | The website: pages, guide and the pre-built Featured frames (static files) | Never |
+| `spectrum-nasa-api` | Live search: finds and stacks SPHEREx exposures (Python, Virginia region, next to the SPHEREx files on AWS us-east-1) | After 15 idle minutes; wakes in about a minute |
 
-Click **Create**. The first build takes about 5–10 minutes; the web address (`https://…run.app`)
-appears at the top of the service page when it's done.
+The website wakes the search server as soon as anyone opens a page and tells visitors while it
+wakes. Featured targets never need it.
 
-Rough cost at these settings: about $50 a month, paid from the trial's $300 credit
-(1 vCPU and 2 GiB kept on all month, at Cloud Run's instance-based Tier 1 rates, after the free allowance).
+**Set up once:**
+1. Sign in at **dashboard.render.com** with GitHub.
+2. **New → Blueprint**, pick this repository, click **Apply**. Both services build (about 5 minutes).
+3. Check `https://spectrum-nasa-api.onrender.com/api/health` shows `{"ok":true}`, then open
+   `https://spectrum-nasa.onrender.com`.
 
-## 3. Check it
+If Render gives the search server a different address (it adds a suffix when a name is taken),
+put that address in `VITE_API_BASE` in `render.yaml` and push.
 
-- `https://<your-address>/api/health` should show `{"ok":true}`.
-- Open the site, try a Featured card (instant) and a live search (e.g. "Vega").
+Every push to `main` redeploys both services.
 
-## Settings the container already has
+**Free-plan limits:** 512 MB of memory and a tenth of a CPU for live search, so a new search is
+slower than on a desktop. The server runs one search at a time (others queue) and keeps a small
+download cache (`LITS_CUTOUT_CACHE_MB`, `LITS_SEQ_CACHE_MB`). To make it faster and stop it
+sleeping, change `plan: free` to `starter` (paid) for `spectrum-nasa-api`.
 
-| Variable | Value | Meaning |
-|---|---|---|
-| `LITS_CACHE_DIR` | `/tmp/lits-cache` | Download cache (Cloud Run keeps this in memory) |
-| `LITS_CUTOUT_CACHE_MB` | `400` | Oldest raw cutouts are deleted past this |
-| `LITS_SEQ_CACHE_MB` | `150` | Oldest finished sequences are deleted past this |
-| `LITS_MAX_ACTIVE_JOBS` | `8` (default) | Past this many unfinished searches, new ones get a polite "busy" message |
+## Any Docker host
 
-## Running the same container elsewhere
+The `Dockerfile` builds one container that serves everything (website, Featured and live search):
 
 ```bash
 docker build -t lits .
 docker run -p 8080:8080 lits      # http://localhost:8080
 ```
 
-It also runs unchanged on Render (Docker web service) or any host that runs containers.
+On Google Cloud Run use instance-based billing with minimum and maximum instances set to 1
+(search progress lives in one process).
+
+## Settings
+
+| Variable | Meaning |
+|---|---|
+| `VITE_API_BASE` | Website build only: address of the live-search server, if it isn't the same site |
+| `LITS_CACHE_DIR` | Download cache folder |
+| `LITS_CUTOUT_CACHE_MB` / `LITS_SEQ_CACHE_MB` | Cache size caps; oldest files go first (0 = no cap) |
+| `LITS_BUILD_WORKERS` | Searches built at once (default 2) |
+| `LITS_MAX_PARALLEL` | Exposure downloads at once (default 8) |
+| `LITS_MAX_ACTIVE_JOBS` | Past this many unfinished searches, new ones get a polite "busy" message (default 8) |

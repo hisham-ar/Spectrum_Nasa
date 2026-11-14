@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchAsteroids, fetchFeaturedSequence, fetchSequence, type LocationParams } from "../lib/api";
+import { ensureAwake, useServerState } from "../lib/server";
 import { hasLocation, readUrl, toSearch, type UrlState } from "../lib/url";
 import { DETECTORS, FOV_PRESETS, type AsteroidResult, type BuildStatus, type FeaturedCard, type FrameMeta,
   type Sequence, type SmallBody, type StepView, type TargetInfo } from "../lib/types";
@@ -61,6 +62,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   const [build, setBuild] = useState<string | null>(null);
   const [buildFrac, setBuildFrac] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const server = useServerState();
   const [xf, setXf] = useState<ViewXform>({ zoom: 1, cx: 50, cy: 50 });
   const [playing, setPlaying] = useState(false);
   const [blinkRunning, setBlinkRunning] = useState(() => !reducedMotion());
@@ -129,8 +131,10 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
       : st.q ? { q: st.q } : { ra: st.ra, dec: st.dec };
     const one = async (det: number, k: number): Promise<Channel> => {
       const folder = card?.sequences[`${det}-${st.view}`];
-      const seq = folder && card && st.fov === card.fov
-        ? await fetchFeaturedSequence(folder, ac.signal)
+      const featuredSeq = !!(folder && card && st.fov === card.fov);
+      if (!featuredSeq) await ensureAwake();
+      const seq = featuredSeq
+        ? await fetchFeaturedSequence(folder!, ac.signal)
         : await fetchSequence(loc, st.fov, det, st.view, (b: BuildStatus) => {
           const pre = dets.length > 1 && !st.grid ? `Detector ${det} (${k + 1} of ${dets.length}): ` : "";
           setBuild(pre + stageText(b));
@@ -207,6 +211,9 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   }, [channels, st.grid, st.det]);
 
   const n = stops.length;
+  // Only a live search needs the server; Featured frames are plain files on the website.
+  const waking = server === "waking" && !build;
+  const waitText = build ?? (waking ? "Starting the search server" : "Searching the SPHEREx archive");
   const clamp = (i: number | undefined, d: number) => (i === undefined || !Number.isFinite(i) ? d : Math.max(0, Math.min(n - 1, Math.round(i))));
   const frameIdx = clamp(st.frame, 0);
   const a = clamp(st.a, 0);
@@ -388,7 +395,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
       <section className="stage" aria-label="Sky view" style={{ ["--dock-h" as string]: `${dockH}px`, ["--head-h" as string]: `${headH}px` }}>
         {st.grid && channels ? (
           <GridView dets={[1, 2, 3, 4, 5, 6]} channels={channels} refDet={st.det} refFrame={stops[shown]?.meta}
-            loading={gridLoading !== null ? { det: gridLoading, text: build, frac: buildFrac } : null} failed={gridFailed}
+            loading={gridLoading !== null ? { det: gridLoading, text: build ?? (waking ? "Starting the search server" : null), frac: buildFrac } : null} failed={gridFailed}
             look={look} smooth={smooth} showMarker={st.marker} linked={linked} xform={xf} onXform={setXf}
             labelsFor={labelsFor} onPick={(d) => update({ grid: false, det: d, frame: undefined, a: undefined, b: undefined })} />
         ) : (
@@ -442,7 +449,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
           <div className="status game" role="region" aria-label="Rocket game">
             {!channels && (
               <div className="game-load">
-                <span>{build ?? "Searching the SPHEREx archive"}</span>
+                <span>{waitText}</span>
                 {buildFrac !== null && <div className="meter" aria-hidden="true"><i style={{ width: `${Math.round(buildFrac * 100)}%` }} /></div>}
               </div>
             )}
@@ -460,9 +467,11 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
               </>
             ) : !channels ? (
               <>
-                <p><strong>{build ?? "Searching the SPHEREx archive"}</strong></p>
+                <p><strong>{waitText}</strong></p>
                 {buildFrac !== null && <div className="meter" aria-hidden="true"><i style={{ width: `${Math.round(buildFrac * 100)}%` }} /></div>}
-                <p className="quiet">A new patch of sky downloads real SPHEREx exposures, about a minute the first time. Featured targets open instantly.</p>
+                <p className="quiet">{waking
+                  ? "The search server sleeps when nobody has searched for a while and takes up to a minute to wake. Featured targets open instantly."
+                  : "A new patch of sky downloads real SPHEREx exposures, about a minute the first time. Featured targets open instantly."}</p>
                 {slowLoad && <button className="chip game-start" onClick={() => setGameOpen(true)}>Play a game while you wait</button>}
               </>
             ) : (

@@ -1,0 +1,47 @@
+# Render Blueprint: Dashboard -> New -> Blueprint -> pick this repo -> Apply.
+# Two free services:
+#   spectrum-nasa      the website, Featured frames and guide (static, never sleeps)
+#   spectrum-nasa-api  live search (Python; sleeps after 15 idle minutes, wakes in about a minute)
+services:
+  - type: web
+    name: spectrum-nasa-api
+    runtime: python
+    plan: free
+    region: virginia            # next to the SPHEREx files on AWS us-east-1
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn lits.api:app --app-dir backend --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: LITS_CACHE_DIR
+        value: /tmp/lits-cache
+      - key: LITS_CUTOUT_CACHE_MB     # free servers have 512 MB of memory: keep the cache small
+        value: "300"
+      - key: LITS_SEQ_CACHE_MB
+        value: "100"
+      - key: LITS_BUILD_WORKERS       # one search at a time, others queue
+        value: "1"
+      - key: LITS_MAX_PARALLEL
+        value: "4"
+      - key: LITS_MAX_ACTIVE_JOBS
+        value: "6"
+
+  - type: web
+    name: spectrum-nasa
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: VITE_API_BASE            # where the website finds live search
+        value: https://spectrum-nasa-api.onrender.com
+    routes:
+      - type: rewrite                 # /explore, /featured, /guide ... are app pages
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*                      # always re-check, so a new deploy is never served stale
+        name: Cache-Control
+        value: no-cache

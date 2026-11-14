@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchFeatured } from "./lib/api";
+import { ensureAwake } from "./lib/server";
 import { hasLocation, readUrl } from "./lib/url";
 import type { FeaturedCard, TargetInfo } from "./lib/types";
 import Explorer from "./components/Explorer";
@@ -24,6 +25,8 @@ export default function App() {
   const [dataAsOf, setDataAsOf] = useState<string | null>(null);
   const [navKey, setNavKey] = useState(0);
   const [, force] = useState(0);
+
+  useEffect(() => { ensureAwake(); }, []);   // start waking the search server while the visitor looks around
 
   useEffect(() => {
     fetchFeatured().then((ix) => {
