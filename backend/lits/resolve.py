@@ -105,6 +105,10 @@ class ParseError(ValueError):
     pass
 
 
+class NotFoundError(ParseError):
+    pass
+
+
 def parse_coordinates(text: str) -> tuple[float, float] | None:
     """Decimal degrees ("133.759 -7.242") or sexagesimal
     ("08h55m02.3s -07d14m32s", "08:55:02.3 -07:14:32", "08 55 02.3 -07 14 32").
@@ -191,5 +195,5 @@ def resolve(query: str, client: httpx.Client | None = None) -> Target:
         if own:
             client.close()
     if t is None:
-        raise ParseError(f"No object called '{q}' was found in SIMBAD, NED or VizieR")
+        raise NotFoundError(f"No object called '{q}' was found in SIMBAD, NED or VizieR")
     return t

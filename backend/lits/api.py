@@ -17,8 +17,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import archive, config, frames
-from .resolve import ParseError, Target, resolve
+import json
+
+from . import archive, asteroids, config, frames
+from .resolve import NotFoundError, ParseError, Target, resolve
 
 app = FastAPI(title="Lost in the Spectrum API", version="0.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
@@ -58,8 +60,10 @@ def status():
 def api_resolve(q: str = Query(..., min_length=1, max_length=200)):
     try:
         t = _resolve_cached(q)
-    except ParseError as e:
+    except NotFoundError as e:
         raise HTTPException(404, str(e)) from e
+    except ParseError as e:
+        raise HTTPException(400, str(e)) from e
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"Name service unavailable: {e}") from e
     d = t.to_dict()
@@ -72,8 +76,14 @@ def _target_from(q: str | None, ra: float | None, dec: float | None) -> tuple[fl
     if q:
         try:
             t = _resolve_cached(q)
-        except ParseError as e:
+        except NotFoundError as e:
             raise HTTPException(404, str(e)) from e
+        except ParseError as e:
+            raise HTTPException(400, str(e)) from e
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(502, f"Name service unavailable: {e}") from e
+        if t.kind == "coords":
+            return t.ra, t.dec, None
         return t.ra, t.dec, t
     if ra is None or dec is None:
         raise HTTPException(400, "Give q (name or coordinates) or ra and dec")
@@ -137,6 +147,23 @@ def api_sequence(q: str | None = None, ra: float | None = None, dec: float | Non
     out = {k: v for k, v in job.items() if k != "trace"}
     out["elapsed_s"] = round(time.time() - job["started"], 1)
     return JSONResponse(out, status_code=202 if job["status"] == "building" else 502)
+
+
+@app.get("/api/asteroids")
+def api_asteroids(key: str, frame: int):
+    if not key.isalnum():
+        raise HTTPException(400, "bad key")
+    d = config.CACHE_DIR / "seq" / key
+    p = d / "sequence.json"
+    if not p.exists():
+        raise HTTPException(404, "unknown sequence")
+    seq = json.loads(p.read_text())
+    if not 0 <= frame < len(seq["frames"]):
+        raise HTTPException(400, "bad frame")
+    try:
+        return asteroids.for_sequence_frame(seq, frame, d)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"JPL Small-Body Identification API unavailable: {e}") from e
 
 
 @app.get("/api/seq/{key}/{name}")

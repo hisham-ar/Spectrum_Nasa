@@ -1,0 +1,61 @@
+{
+  "_readme": "Edit text here, then rerun backend/scripts/build_featured.py. A card only appears on the Featured page once 'verified' is true, which a person sets after looking at the real frames. build_dets = detectors to pre-compute (the first is the default view).",
+  "cards": [
+    {
+      "slug": "barnard", "name": "Barnard's Star", "q": "Barnard's Star",
+      "category": "Motion", "title": "Watch the star walk",
+      "blurb": "The fastest-moving star in our sky shifts about 10 arcseconds a year, almost two SPHEREx pixels. Blink between the first and latest survey and watch it step north while the stars behind it stay put.",
+      "can_see": "Its position, clearly. Not its brightness: the core is saturated (black), so brightness cannot be measured here.",
+      "det": 3, "fov": 10, "view": "survey", "compare": "blink",
+      "build_dets": [3, 1, 2, 4, 5, 6], "verified": false
+    },
+    {
+      "slug": "eps-indi-b", "name": "ε Indi B", "q": "eps Ind B",
+      "category": "Infrared colour", "title": "Same sky, different colours",
+      "blurb": "A pair of brown dwarfs, too cool to shine much in visible light. Compare detector 1 with detector 6: they get relatively brighter at longer infrared wavelengths, while ordinary stars fade.",
+      "can_see": "Colour differences between detectors. Their motion is subtle (under a pixel a year), and the two dwarfs are 0.6″ apart, so they appear as one dot. Their sun, ε Indi A, is in the same 20′ field.",
+      "det": 6, "fov": 20, "view": "survey", "compare": "none",
+      "build_dets": [6, 1, 3], "verified": false
+    },
+    {
+      "slug": "wise-0855", "name": "WISE 0855−0714", "q": "WISE J085510.83-071442.5",
+      "category": "Limits of the telescope", "title": "The coldest known brown dwarf",
+      "blurb": "The coldest brown dwarf known, at roughly Earth-surface temperatures. If SPHEREx sees it at all, it will only be at 4–5 µm (detectors 5 and 6).",
+      "can_see": "Possibly nothing: it sits at the edge of what SPHEREx can detect in its first year. Look inside the dashed circle in detectors 5 and 6, and compare with detector 1, where it should be invisible.",
+      "det": 6, "fov": 10, "view": "survey", "compare": "none",
+      "build_dets": [6, 5, 1], "verified": false
+    },
+    {
+      "slug": "rw-aur", "name": "RW Aurigae", "q": "RW Aur",
+      "category": "Variable or saturated?", "title": "Variable or saturated?",
+      "blurb": "A young star known for irregular dimming. Before trusting any brightness change, switch on the pixel tint: if its core is saturated, the change is not measurable here.",
+      "can_see": "Whether its core is usable in each detector. It lies near the ecliptic, so asteroids may cross the field in the Every-exposure view.",
+      "det": 3, "fov": 10, "view": "survey", "compare": "none",
+      "build_dets": [3, 1, 6], "verified": false
+    },
+    {
+      "slug": "r-dra", "name": "R Draconis", "q": "R Dra",
+      "category": "Explore colour", "title": "A pulsating giant near the pole",
+      "blurb": "A Mira variable that swells and fades over about 246 days. It lies near the north ecliptic pole, so SPHEREx visits it far more often than most of the sky.",
+      "can_see": "Many visits and strong colour differences between detectors. It is very bright, so expect saturation; brightness only means something where pixels are not flagged.",
+      "det": 3, "fov": 10, "view": "survey", "compare": "none",
+      "build_dets": [3, 1, 6], "verified": false
+    },
+    {
+      "slug": "nep-deep", "name": "North ecliptic pole deep field", "ra": 270.0, "dec": 66.5607,
+      "category": "Richest timeline", "title": "The most-visited patch of sky",
+      "blurb": "SPHEREx passes over the poles of the ecliptic on every orbit, so this patch has the longest timeline of all. Step through it survey by survey.",
+      "can_see": "Many epochs of the same faint galaxies and stars. Good for seeing what stays the same, which is most of the sky.",
+      "det": 3, "fov": 20, "view": "survey", "compare": "none",
+      "build_dets": [3], "verified": false
+    },
+    {
+      "slug": "orion-ices", "name": "Orion Nebula", "q": "M42",
+      "category": "Infrared colour", "title": "Dust and ices in Orion",
+      "blurb": "A nearby star-forming region. Detector 4 covers wavelengths where dust grains and ices glow or absorb, so the cloud looks very different from detector 1.",
+      "can_see": "Large-scale glowing dust and gas. The brightest stars are saturated.",
+      "det": 4, "fov": 20, "view": "survey", "compare": "none",
+      "build_dets": [4, 1, 6], "verified": false
+    }
+  ]
+}
