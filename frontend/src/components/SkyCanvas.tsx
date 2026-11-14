@@ -82,6 +82,7 @@ export default function SkyCanvas({ image, smooth, marker, showMarker, bodies, l
         ctx.strokeStyle = "rgba(242, 210, 75, 0.9)";
         ctx.lineWidth = 1.25;
         ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.stroke();
+        if (size.w < 320) continue;   // small panels (grid): circles only; names would pile up
         const w = ctx.measureText(l.label).width;
         // label above the circle, kept inside the canvas
         const lx = Math.min(Math.max(4, sx - w / 2 - 4), size.w - w - 12);
