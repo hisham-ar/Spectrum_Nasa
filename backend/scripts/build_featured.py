@@ -87,8 +87,9 @@ def main() -> int:
                 cra, cdec = p["centre"]
                 size = coadd.cutout_size_arcmin(req.fov)
                 existing = out / "sequence.json"
-                up_to_date = (not args.force and existing.exists()
-                              and json.loads(existing.read_text(encoding="utf-8")).get("key") == p["key"])
+                prev = json.loads(existing.read_text(encoding="utf-8")) if existing.exists() else {}
+                up_to_date = (not args.force and prev.get("key") == p["key"]
+                              and (len(prev.get("frames", [])) > 0 or not p["units"]))
                 cached = len(exps) if up_to_date else sum(archive.is_cached_exposure(e, cra, cdec, size) for e in exps)
                 jobs.append({"card": card, "det": det, "view": view, "req": req, "plan": p, "out": out,
                              "n": len(exps), "cached": cached, "skip": up_to_date})

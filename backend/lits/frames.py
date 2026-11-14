@@ -146,6 +146,9 @@ def build_sequence(req: Request, out_dir: Path | None = None, progress: Progress
         loaded_meta.append(ul)
 
     keep = [i for i, f in enumerate(frames) if f.n_inputs > 0]
+    if p["units"] and not keep:
+        errs = [x.get("error") for ul in loaded_meta for x in ul if x.get("error")]
+        raise RuntimeError(f"none of the {len(all_exps)} exposures could be used; first problem: {errs[0] if errs else 'unknown'}")
     lo, hi = render.shared_limits([frames[i].data for i in keep]) if keep else (0.0, 1.0)
 
     # 3. render + metadata
