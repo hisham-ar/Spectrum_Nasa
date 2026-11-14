@@ -130,4 +130,8 @@ HTTP_TIMEOUT = float(os.environ.get("LITS_HTTP_TIMEOUT", "120"))
 LIVE_MAX_EXPOSURES_PER_EPOCH = int(os.environ.get("LITS_LIVE_MAX_PER_EPOCH", "8"))
 FEATURED_MAX_EXPOSURES_PER_EPOCH = int(os.environ.get("LITS_FEATURED_MAX_PER_EPOCH", "24"))
 MAX_PARALLEL_DOWNLOADS = int(os.environ.get("LITS_MAX_PARALLEL", "6"))
+# A cutout that sends nothing for READ_TIMEOUT s, or takes longer than
+# CUTOUT_DEADLINE s in total, is abandoned and retried (never hang forever).
+CUTOUT_READ_TIMEOUT = float(os.environ.get("LITS_CUTOUT_READ_TIMEOUT", "60"))
+CUTOUT_DEADLINE = float(os.environ.get("LITS_CUTOUT_DEADLINE", "180"))
 USER_AGENT = "LostInTheSpectrum/0.1 (NASA Space Apps 2026)"

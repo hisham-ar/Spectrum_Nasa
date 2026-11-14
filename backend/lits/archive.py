@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
@@ -250,26 +251,57 @@ def cutout_url(access_url: str, ra: float, dec: float, size_arcmin: float) -> st
     return f"{base}?center={ra:.7f},{dec:.7f}&size={size_arcmin:.3f}arcmin"
 
 
-def fetch_cutout(access_url: str, ra: float, dec: float, size_arcmin: float) -> tuple[Path, CutoutStats]:
+def cutout_path(url: str) -> Path:
+    return config.CACHE_DIR / "cutouts" / f"{_key(url)}.fits"
+
+
+def is_cached(access_url: str, ra: float, dec: float, size_arcmin: float) -> bool:
+    p = cutout_path(cutout_url(access_url, ra, dec, size_arcmin))
+    return p.exists() and p.stat().st_size > 0
+
+
+def _download(url: str, path: Path) -> int:
+    """Stream to disk with a read timeout and an overall deadline."""
+    t0 = time.time()
+    timeout = httpx.Timeout(config.CUTOUT_READ_TIMEOUT, connect=20.0, pool=None)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(f".{threading.get_ident()}.part")
+    n = 0
+    try:
+        with client().stream("GET", url, timeout=timeout) as r:
+            r.raise_for_status()
+            with open(tmp, "wb") as fh:
+                for chunk in r.iter_bytes():  # yields as data arrives, so the deadline is checked
+                    fh.write(chunk)
+                    n += len(chunk)
+                    if time.time() - t0 > config.CUTOUT_DEADLINE:
+                        raise TimeoutError(f"cutout still downloading after {config.CUTOUT_DEADLINE:.0f} s")
+        if n == 0:
+            raise RuntimeError("empty response")
+        tmp.replace(path)
+        return n
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+def fetch_cutout(access_url: str, ra: float, dec: float, size_arcmin: float,
+                 attempts: int = 3) -> tuple[Path, CutoutStats]:
     url = cutout_url(access_url, ra, dec, size_arcmin)
-    path = config.CACHE_DIR / "cutouts" / f"{_key(url)}.fits"
+    path = cutout_path(url)
     if path.exists() and path.stat().st_size > 0:
         return path, CutoutStats(url, 0.0, path.stat().st_size, True)
     t0 = time.time()
     last: Exception | None = None
-    for attempt in range(3):
+    for attempt in range(attempts):
         try:
-            r = client().get(url)
-            r.raise_for_status()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(".part")
-            tmp.write_bytes(r.content)
-            tmp.replace(path)
-            return path, CutoutStats(url, round(time.time() - t0, 2), len(r.content), False)
+            n = _download(url, path)
+            return path, CutoutStats(url, round(time.time() - t0, 2), n, False)
         except Exception as e:  # noqa: BLE001
             last = e
-            time.sleep(3.0 * (attempt + 1))
-    raise RuntimeError(f"Cutout failed after 3 tries: {url}: {last}")
+            if attempt < attempts - 1:
+                time.sleep(3.0 * (attempt + 1))
+    raise RuntimeError(f"{type(last).__name__}: {last}")
 
 
 def fetch_many(exposures: list[Exposure], ra: float, dec: float, size_arcmin: float,
@@ -292,7 +324,7 @@ def fetch_many(exposures: list[Exposure], ra: float, dec: float, size_arcmin: fl
     # Second pass, one at a time: Gate A lost 6 of 35 cutouts in parallel.
     for e in failed:
         try:
-            p, s = fetch_cutout(e.access_url, ra, dec, size_arcmin)
+            p, s = fetch_cutout(e.access_url, ra, dec, size_arcmin, attempts=2)
             out.append((e, p, s))
         except Exception as ex:  # noqa: BLE001 - a missing exposure is reported, not fatal
             out.append((e, None, CutoutStats(f"{type(ex).__name__}: {ex}", 0.0, 0, False)))  # type: ignore[arg-type]
