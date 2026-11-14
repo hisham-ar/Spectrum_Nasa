@@ -5,13 +5,15 @@ import type { FeaturedCard, TargetInfo } from "./lib/types";
 import Explorer from "./components/Explorer";
 import Featured from "./components/Featured";
 import About from "./components/About";
+import Guide from "./components/Guide";
 import SearchBox from "./components/SearchBox";
 
-type Page = "explore" | "featured" | "about";
+type Page = "explore" | "featured" | "about" | "guide";
 
 function pageOf(path: string): Page {
   if (path.startsWith("/featured")) return "featured";
   if (path.startsWith("/about")) return "about";
+  if (path.startsWith("/guide")) return "guide";
   return "explore";
 }
 
@@ -60,6 +62,7 @@ export default function App() {
         {exploring && <SearchBox key={navKey} featured={featured} onPickFeatured={onPick} onResolved={onResolved} compact />}
         <nav aria-label="Main">
           <a href="/" onClick={link("/")} aria-current={page === "explore" ? "page" : undefined}>Explore</a>
+          <a href="/guide" onClick={link("/guide")} aria-current={page === "guide" ? "page" : undefined}><span className="nav-long">How to use</span><span className="nav-short">Guide</span></a>
           <a href="/featured" onClick={link("/featured")} aria-current={page === "featured" ? "page" : undefined}>Featured</a>
           <a href="/about" onClick={link("/about")} aria-current={page === "about" ? "page" : undefined}><span className="nav-long">About the data</span><span className="nav-short">About</span></a>
         </nav>
@@ -68,6 +71,7 @@ export default function App() {
         {page === "explore" && <Explorer key={navKey} featured={featured} featuredReady={featuredReady} onDataDate={setDataAsOf} onNavigate={go} />}
         {page === "featured" && <Featured cards={featured} onOpen={onPick} />}
         {page === "about" && <About />}
+        {page === "guide" && <Guide featured={featured} featuredReady={featuredReady} onNavigate={go} />}
       </div>
       <footer className="footer">
         <span>{dataAsOf ? `Newest SPHEREx exposure shown: ${dataAsOf}.` : "SPHEREx images from the NASA/IPAC Infrared Science Archive."}</span>

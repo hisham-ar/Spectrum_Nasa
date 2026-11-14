@@ -3,7 +3,7 @@ import { fetchAsteroids, fetchFeaturedSequence, fetchSequence, type LocationPara
 import { hasLocation, readUrl, toSearch, type UrlState } from "../lib/url";
 import { DETECTORS, FOV_PRESETS, type AsteroidResult, type BuildStatus, type FeaturedCard, type FrameMeta,
   type Sequence, type SmallBody, type TargetInfo } from "../lib/types";
-import { DEFAULT_LOOK, loadPlane, renderGray, renderRGB, type Look, type Plane, type Stretch } from "../lib/render";
+import { DEFAULT_LOOK, FALLBACK_STRETCH, loadPlane, renderGray, renderRGB, type Look, type Plane, type Stretch } from "../lib/render";
 import SkyCanvas, { type ViewXform } from "./SkyCanvas";
 import Timeline, { longDate, monthSpan } from "./Timeline";
 import SpectralRail from "./SpectralRail";
@@ -28,7 +28,6 @@ export const CHALLENGE_TARGETS: { name: string; q: string; det: number; fov: num
 interface Channel { det: number; seq: Sequence; planes: (Plane | null)[] }
 interface Stop { idx: number[]; meta: FrameMeta; metas: FrameMeta[] }
 
-const FALLBACK_STRETCH: Stretch = { lo: 0, hi: 255, a: 10 };
 
 function stretchOf(c: Channel, i: number): Stretch {
   return c.planes[i]?.fallback ? FALLBACK_STRETCH : { lo: c.seq.stretch.lo, hi: c.seq.stretch.hi, a: c.seq.stretch.a };
@@ -271,7 +270,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
 
   // --- welcome -------------------------------------------------------------------------------
   if (!hasLocation(st)) {
-    return <Hero featured={featured} featuredReady={featuredReady} onPickFeatured={goCard} onResolved={goTarget} onChallenge={goChallenge} />;
+    return <Hero featured={featured} featuredReady={featuredReady} onPickFeatured={goCard} onResolved={goTarget} onChallenge={goChallenge} onNavigate={onNavigate} />;
   }
 
   const ch0 = channels?.[0];
@@ -441,8 +440,8 @@ function stageText(b: BuildStatus): string {
 
 // ---- home: Barnard's Star itself, blinking between its first and latest survey ----------
 
-function Hero({ featured, featuredReady, onPickFeatured, onResolved, onChallenge }: {
-  featured: FeaturedCard[]; featuredReady: boolean;
+function Hero({ featured, featuredReady, onPickFeatured, onResolved, onChallenge, onNavigate }: {
+  featured: FeaturedCard[]; featuredReady: boolean; onNavigate: (to: string) => void;
   onPickFeatured: (c: FeaturedCard) => void; onResolved: (t: TargetInfo) => void;
   onChallenge: (c: (typeof CHALLENGE_TARGETS)[number], demo?: boolean) => void;
 }) {
@@ -500,7 +499,10 @@ function Hero({ featured, featuredReady, onPickFeatured, onResolved, onChallenge
         <p className="lede">
           These are real infrared images from NASA's SPHEREx telescope. It maps the whole sky every six months. Pick a star and step through the surveys to see what moved.
         </p>
-        <SearchBox featured={featured} onPickFeatured={onPickFeatured} onResolved={onResolved} />
+        <div className="hero-search">
+          <SearchBox featured={featured} onPickFeatured={onPickFeatured} onResolved={onResolved} />
+          <a className="howto" href="/guide" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); onNavigate("/guide"); }}>How to use</a>
+        </div>
         <div className="hero-targets">
           <span className="quiet">Challenge targets</span>
           {CHALLENGE_TARGETS.map((c) => (

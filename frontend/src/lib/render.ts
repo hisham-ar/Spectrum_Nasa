@@ -22,6 +22,8 @@ export interface Look {
 }
 
 export const DEFAULT_LOOK: Look = { gain: 0, soft: 0, showFlags: false };
+/** Stretch for frames that only exist as already-stretched 8-bit PNGs. */
+export const FALLBACK_STRETCH: Stretch = { lo: 0, hi: 255, a: 10 };
 
 export const SAT_RGB: [number, number, number] = [255, 79, 216];
 export const FLAG_RGB: [number, number, number] = [122, 108, 255];

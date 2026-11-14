@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const COLS = 18, ROWS = 12, CELL = 24;
 const W = COLS * CELL, H = ROWS * CELL;
-const START_MS = 150, MIN_MS = 80;           // time per step; speeds up as you eat
+const START_MS = 220, MIN_MS = 130;          // time per step; speeds up a little as you eat
 const BEST_KEY = "lits:rocket-best";
 
 type Dir = [number, number];
@@ -158,7 +158,7 @@ export default function RocketGame({ ready, readyText, onShowSky, onClose }:
     let raf = 0, last = performance.now(), acc = 0;
     const loop = (now: number) => {
       const g = game.current;
-      const stepMs = Math.max(MIN_MS, START_MS - g.eaten * 4);
+      const stepMs = Math.max(MIN_MS, START_MS - g.eaten * 3);
       if (!paused && !g.over) {
         acc += Math.min(250, now - last);
         while (acc >= stepMs) {
