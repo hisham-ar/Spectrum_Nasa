@@ -36,7 +36,7 @@ function Card({ c, review, onOpen }: { c: FeaturedCard; review: boolean; onOpen:
       <p>{c.blurb}</p>
       <p className="quiet">What you can really see: {c.can_see}</p>
       <p className="quiet">{c.name}, detector {c.det} ({DETECTORS[c.det].band[0].toFixed(2)} to {DETECTORS[c.det].band[1].toFixed(2)} µm), {c.fov} arcmin field.</p>
-      {!review && c.verified_on && <p className="quiet">Checked against the frames by our team, {longDate(c.verified_on)}.</p>}
+      {!review && c.verified_on && <p className="quiet">Checked against the frames on {longDate(c.verified_on)}.</p>}
       <button className="chip" onClick={() => onOpen(c)}>Open in the explorer</button>
       {review && (
         <div className="review">
@@ -76,7 +76,7 @@ export default function Featured({ cards, onOpen }: { cards: FeaturedCard[]; onO
       ) : (
         <>
           <h1>Things worth a look</h1>
-          <p className="lede">Each of these opens the explorer on real SPHEREx frames that someone on our team has checked by eye. They load from a saved copy, so they open instantly.</p>
+          <p className="lede">Each of these opens the explorer on real SPHEREx frames, checked against what the card says. They load from a saved copy, so they open instantly.</p>
         </>
       )}
       {shown.length === 0 ? (

@@ -36,12 +36,12 @@
       "category": "Infrared colour",
       "title": "Faint in one detector, bright in another",
       "blurb": "A pair of brown dwarfs 12 light-years away, too cool to shine like ordinary stars. Step from detector 1 to detector 6: it goes from barely visible to outshining almost every star around it, apart from its own sun, ε Indi A.",
-      "can_see": "The change between detectors, clearly: compared with the brightest stars around it, it is about a tenth as bright in detector 1, about the same in detector 3 and about six times brighter in detector 6. Its motion is slow but there: about one pixel over the 17 months of data. The two brown dwarfs are too close together to separate, so they show as one dot.",
+      "can_see": "The change between detectors, clearly: compared with the brightest stars around it, it is about a tenth as bright in detector 1, about the same in detector 3 and about six times brighter in detector 6. Its motion is slow but there: about one pixel over the 17 months of data. The two brown dwarfs are too close together to separate, so they show as one dot. The first detector-1 frame was taken before the survey officially began, from only four exposures, and has a band of blotches that isn't in the sky.",
       "check": [
         "Detector 1: only a faint dot in the dashed circle.",
         "Detector 6: a bright dot in the circle, brighter than most stars in view.",
         "The bright star with the blank centre to the right is ε Indi A.",
-        "Detector 1's first frame (April 2025, before the survey began, 4 exposures) has a diagonal band of blotches. Decide whether it's fine to show."
+        "Detector 1's first frame (April 2025, before the survey began, 4 exposures) has a diagonal band of blotches; the card text says so."
       ],
       "review_note": "Brightness relative to the median of the 15 brightest unsaturated field stars: D1 0.09-0.14 (0.66 in the 4-exposure pre-survey frame), D3 1.14-1.30, D6 5.8-6.7. Measured shift Apr 2025 to Sep 2026: 0.98 px (predicted 1.07).",
       "det": 6,
@@ -69,7 +69,7 @@
         "Detector 1: the nearby dot stays still while the circle moves towards it.",
         "The first detector-6 visit stacks only 3 exposures, so the dot is barely there."
       ],
-      "review_note": "Detection at the predicted position: D6 3.3, 12.8, 18.4 sigma; D5 9-18 sigma, offsets 1-4 arcsec. Measured shift May 2025 to Apr/May 2026: D5 1.12 px, D6 1.49 px (predicted 1.28-1.31 px west). D1 source fixed at 12, 8, 4.7 arcsec from the predicted position: a background star.",
+      "review_note": "Detection at the predicted position: D6 3.3, 12.8, 18.4 sigma; D5 9-18 sigma, offsets 1-4 arcsec. Measured shift May 2025 to Apr/May 2026: D5 1.12 px, D6 1.49 px (predicted 1.28-1.31 px west). D1 source fixed at 12, 8, 4.7 arcsec from the predicted position: a background star. Visual check: zoomed in, a clear dot sits inside the circle in the latest detector-6 visit.",
       "det": 6,
       "fov": 10,
       "view": "survey",
@@ -88,14 +88,14 @@
       "category": "Reading the data",
       "title": "When can a star's brightness be trusted?",
       "blurb": "A young pair of stars about 500 light-years away, still surrounded by the gas and dust they formed from. Since 2010 the brighter star has faded sharply several times. These frames show which SPHEREx detectors could actually measure it.",
-      "can_see": "In detector 1 its centre is measured in every visit. In detector 3 the centre is blank in every visit, and in detector 6 it's blank in some visits and not others. Its brightness changes can't be judged from these frames.",
+      "can_see": "Detector 1 is the best place to look: its centre is measured in the first two visits, and only two pixels at the very centre are blank in the latest one. In detector 3 the centre is blank in every visit, and in detector 6 it's blank in some visits and not others. Its brightness changes can't be judged from these frames.",
       "check": [
-        "Detector 1: a bright dot in the circle with no blank centre.",
-        "Detector 3: a small blank centre inside the circle.",
+        "Detector 1: a bright dot in the circle; Show which pixels marks two blank pixels at its centre only in the latest visit.",
+        "Detector 3: a small blank centre inside the circle in every visit.",
         "Detector 6: compare visits with Show which pixels switched on.",
-        "In detector 1 its centre appears to shift by about 3/4 of a pixel between the first and last visit. That isn't real motion; have a look before approving."
+        "Blinking detector 1, the centre looks slightly off in the latest visit because of those two blank pixels. It isn't motion: the stars around it line up to within 0.02 pixels."
       ],
-      "review_note": "Saturated pixels near the star: D1 0 in all visits; D3 11-15; D6 17, 0, 4. D1 brightness relative to field stars 4.16, 3.33, 3.78 (not claimed: wavelength mix and pointing differ between visits).",
+      "review_note": "Saturated pixels near the star: D1 0, 0, 2 (latest visit, QR3); D3 11-15; D6 17, 0, 4. Field stars line up between the first and latest visit to within 0.02 px, so the apparent 0.75 px shift of the star in D1 comes from the two blank centre pixels, not motion. D1 brightness relative to field stars 4.16, 3.33, 3.78 (not claimed: wavelength mix and pointing differ between visits).",
       "det": 1,
       "fov": 10,
       "view": "survey",
