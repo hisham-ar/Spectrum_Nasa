@@ -37,6 +37,21 @@ STATUS = LOGDIR / "build_status.json"
 LOG = LOGDIR / "build_featured.log"
 
 
+def _network_down(err: str) -> bool:
+    e = err.lower()
+    return any(k in e for k in ("getaddrinfo", "name or service not known", "nodename nor servname",
+                                "temporary failure in name resolution", "network is unreachable"))
+
+
+def _internet_ok() -> bool:
+    import socket
+    try:
+        socket.getaddrinfo("nasa-irsa-spherex.s3.us-east-1.amazonaws.com", 443)
+        return True
+    except OSError:
+        return False
+
+
 def log(msg: str) -> None:
     LOGDIR.mkdir(parents=True, exist_ok=True)
     with open(LOG, "a", encoding="utf-8") as fh:
@@ -88,8 +103,9 @@ def main() -> int:
                 size = coadd.cutout_size_arcmin(req.fov)
                 existing = out / "sequence.json"
                 prev = json.loads(existing.read_text(encoding="utf-8")) if existing.exists() else {}
-                up_to_date = (not args.force and prev.get("key") == p["key"]
-                              and (len(prev.get("frames", [])) > 0 or not p["units"]))
+                pf = prev.get("frames", [])
+                complete = (len(pf) == len(p["units"]) and not any(f.get("n_failed") for f in pf)) if pf else not p["units"]
+                up_to_date = not args.force and prev.get("key") == p["key"] and complete
                 cached = len(exps) if up_to_date else sum(archive.is_cached_exposure(e, cra, cdec, size) for e in exps)
                 jobs.append({"card": card, "det": det, "view": view, "req": req, "plan": p, "out": out,
                              "n": len(exps), "cached": cached, "skip": up_to_date})
@@ -107,6 +123,7 @@ def main() -> int:
     # ---- phase 2: build ------------------------------------------------------------
     prog = BuildProgress(total, cached0, STATUS, "Featured build")
     results: dict[str, dict] = {}
+    aborted = False
     for k, j in enumerate(jobs, 1):
         slug, det, view = j["card"]["slug"], j["det"], j["view"]
         tag = f"{slug} D{det} {view} ({k}/{len(jobs)})"
@@ -133,6 +150,7 @@ def main() -> int:
                 prog.set_current(f"{_t}: combining epoch {done + 1}/{n}")
 
         t0 = time.time()
+        seq = None
         try:
             seq = frames.build_sequence(j["req"], out_dir=tmp, progress=cb, planned=j["plan"])
             for npy in tmp.glob("*.npy"):
@@ -158,8 +176,21 @@ def main() -> int:
             log(line.strip() + "\n" + traceback.format_exc())
             if tmp.exists():
                 shutil.rmtree(tmp, ignore_errors=True)
+            if _network_down(str(e)) or not _internet_ok():
+                msg = ("\n\n*** Your internet connection seems to be down (no address lookups work). Stopping here.\n"
+                       "    Everything finished so far is kept. Reconnect, then run the same command again to resume. ***")
+                print(msg, flush=True)
+                log("stopped: network down")
+                aborted = True
+                break
         # count this job's remaining planned cutouts as handled (done, failed or skipped)
         prog.done = min(prog.total, prog.done + max(0, j["n"] - job_cached - state["prev"]))
+        failed_here = sum(f.get("n_failed", 0) for f in (seq["frames"] if seq else []))
+        if failed_here and failed_here >= j["n"] // 2 and not _internet_ok():
+            print("\n\n*** Many downloads failed and the internet looks unreachable. Stopping; rerun to resume. ***", flush=True)
+            log("stopped: network down (many failed downloads)")
+            aborted = True
+            break
 
     # ---- index ---------------------------------------------------------------------
     latest = ""
@@ -191,7 +222,8 @@ def main() -> int:
             shutil.rmtree(DIST)
         shutil.copytree(OUT, DIST, ignore=shutil.ignore_patterns("*.building"))
     ok = sum(1 for f in prog.finished_jobs if f["status"] != "failed")
-    prog.close(f"Done: {ok}/{len(jobs)} sequences ready, {prog.failed} cutouts could not be downloaded. "
+    prog.close(("STOPPED EARLY (network). " if aborted else "") +
+               f"Done: {ok}/{len(jobs)} sequences ready, {prog.failed} cutouts could not be downloaded. "
                f"Index: {index_path}")
     log(f"=== build finished: {ok}/{len(jobs)} ok")
     return 0 if ok == len(jobs) else 1
