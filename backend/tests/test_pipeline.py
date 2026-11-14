@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import os
+
 import pytest
 from astropy.io import fits
 from astropy.time import Time
@@ -200,3 +202,34 @@ def test_overflow_pixels_kept_but_marked(tmp_path):
     near = f.pixclass == coadd.NEAR_SATURATED
     assert near.any()
     assert np.isfinite(f.data[near]).all()   # used, not blanked
+
+
+def test_name_lookup_is_saved_and_used_offline(tmp_path, monkeypatch):
+    import httpx
+    from lits import config as cfg
+    from lits import resolve as rs
+    monkeypatch.setattr(cfg, "CACHE_DIR", tmp_path)
+
+    calls = {"n": 0}
+
+    def online(request):
+        calls["n"] += 1
+        return httpx.Response(200, text=SESAME_SAMPLE)
+
+    def offline(request):
+        raise httpx.ConnectError("getaddrinfo failed", request=request)
+
+    t1 = rs.resolve("Barnard's Star", client=httpx.Client(transport=httpx.MockTransport(online)))
+    # Saved answer is reused without asking the network again...
+    t2 = rs.resolve("barnard's  star", client=httpx.Client(transport=httpx.MockTransport(online)))
+    assert calls["n"] == 1 and (t2.ra, t2.dec) == (t1.ra, t1.dec)
+    # ...and still answers when it is old and the network is down.
+    for f in (tmp_path / "names").glob("*.xml"):
+        os.utime(f, (0, 0))
+    t3 = rs.resolve("Barnard's Star", client=httpx.Client(transport=httpx.MockTransport(offline)))
+    assert (t3.ra, t3.dec, t3.pmra) == (t1.ra, t1.dec, t1.pmra)
+    # A name never looked up still reports the network problem.
+    with pytest.raises(httpx.ConnectError):
+        rs.resolve("Vega", client=httpx.Client(transport=httpx.MockTransport(offline)))
+    # Targets survive a round trip through the sequence JSON.
+    assert Target.from_dict(t1.to_dict()) == t1

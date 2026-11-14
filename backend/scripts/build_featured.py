@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lits import archive, coadd, config, frames  # noqa: E402
 from lits.progress import BuildProgress  # noqa: E402
-from lits.resolve import resolve  # noqa: E402
+from lits.resolve import Target, resolve  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 CARDS = ROOT / "backend" / "featured_cards.json"
@@ -50,6 +50,18 @@ def _internet_ok() -> bool:
         return True
     except OSError:
         return False
+
+
+def _saved_target(slug: str):
+    """The resolved target stored with this card's last build, for rebuilding offline."""
+    for seq in sorted((OUT / slug).glob("d*-*/sequence.json")):
+        try:
+            t = json.loads(seq.read_text(encoding="utf-8")).get("target")
+        except (OSError, ValueError):
+            continue
+        if t:
+            return Target.from_dict(t)
+    return None
 
 
 def log(msg: str) -> None:
@@ -80,9 +92,13 @@ def main() -> int:
         try:
             tgt = resolve(card["q"]) if card.get("q") else None
         except Exception as e:  # noqa: BLE001
-            print(f"  ! {card['slug']}: could not resolve '{card.get('q')}': {e}")
-            log(f"resolve failed {card['slug']}: {e}")
-            continue
+            tgt = _saved_target(card["slug"])
+            if tgt is None:
+                print(f"  ! {card['slug']}: could not resolve '{card.get('q')}': {e}")
+                log(f"resolve failed {card['slug']}: {e}")
+                continue
+            print(f"  ~ {card['slug']}: name lookup failed ({type(e).__name__}); using the position saved with the last build")
+            log(f"resolve failed {card['slug']}: {e}; using saved target")
         if tgt is not None:
             tgt.name = card["name"]          # show the card's display name, not SIMBAD's identifier
         ra = tgt.ra if tgt else card["ra"]

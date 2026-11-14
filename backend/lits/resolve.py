@@ -6,9 +6,11 @@ Typed coordinates are a sky position and are never propagated.
 """
 from __future__ import annotations
 
+import hashlib
 import re
+import time
 import xml.etree.ElementTree as ET
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from urllib.parse import quote
 
 import astropy.units as u
@@ -77,6 +79,11 @@ class Target:
         d = asdict(self)
         d["moves"] = self.moves
         return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Target":
+        names = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in d.items() if k in names})
 
 
 def propagate(ra, dec, pmra, pmdec, plx, rv, t0: Time, t1: Time) -> tuple[float, float]:
@@ -189,6 +196,14 @@ def parse_sesame(xml_text: str, query: str) -> Target | None:
     return None
 
 
+NAME_CACHE_DAYS = 30
+
+
+def _name_cache_path(q: str):
+    key = hashlib.sha1(" ".join(q.lower().split()).encode()).hexdigest()[:20]
+    return config.CACHE_DIR / "names" / f"{key}.xml"
+
+
 def resolve(query: str, client: httpx.Client | None = None) -> Target:
     q = query.strip()
     if not q:
@@ -198,16 +213,33 @@ def resolve(query: str, client: httpx.Client | None = None) -> Target:
         return Target(kind="coords", query=q, ra=coords[0], dec=coords[1],
                       label="Coordinates",
                       notes=["Typed coordinates are used as given and never moved for proper motion."])
-    own = client is None
-    client = client or httpx.Client(timeout=config.HTTP_TIMEOUT, follow_redirects=True,
-                                    headers={"User-Agent": config.USER_AGENT})
-    try:
-        r = client.get(SESAME_URL.format(q=quote(q)))
-        r.raise_for_status()
-        t = parse_sesame(r.text, q)
-    finally:
-        if own:
-            client.close()
+    cache = _name_cache_path(q)
+    xml_text, fresh = None, False
+    if cache.exists() and time.time() - cache.stat().st_mtime < NAME_CACHE_DAYS * 86400:
+        xml_text = cache.read_text(encoding="utf-8")
+    if xml_text is None:
+        own = client is None
+        client = client or httpx.Client(timeout=config.HTTP_TIMEOUT, follow_redirects=True,
+                                        headers={"User-Agent": config.USER_AGENT})
+        try:
+            r = client.get(SESAME_URL.format(q=quote(q)))
+            r.raise_for_status()
+            xml_text, fresh = r.text, True
+        except httpx.TransportError:
+            # Offline: an older saved answer is better than none (catalogue
+            # positions don't change from week to week).
+            if not cache.exists():
+                raise
+            xml_text = cache.read_text(encoding="utf-8")
+        finally:
+            if own:
+                client.close()
+    t = parse_sesame(xml_text, q)
+    if t is not None and fresh:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        tmp = cache.with_suffix(".part")
+        tmp.write_text(xml_text, encoding="utf-8")
+        tmp.replace(cache)
     if t is None:
         raise NotFoundError(f"No object called '{q}' was found in SIMBAD, NED or VizieR")
     return t
