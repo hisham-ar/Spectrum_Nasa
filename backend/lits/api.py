@@ -5,6 +5,7 @@ The browser never touches FITS: it gets finished PNG frames + JSON metadata.
 from __future__ import annotations
 
 import hashlib
+import os
 import threading
 import time
 import traceback
@@ -19,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 import json
 
-from . import archive, asteroids, config, frames
+from . import archive, asteroids, config, frames, housekeeping
 from .resolve import NotFoundError, ParseError, Target, resolve
 
 app = FastAPI(title="Lost in the Spectrum API", version="0.1")
@@ -41,7 +42,10 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], a
 _targets: dict[str, tuple[float, Target]] = {}
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
-_pool = ThreadPoolExecutor(max_workers=2)
+_pool = ThreadPoolExecutor(max_workers=int(os.environ.get("LITS_BUILD_WORKERS", "2")))
+# A public server must not queue unlimited work: past this many unfinished searches,
+# new ones are turned away with a clear message (Featured still works, it needs no search).
+MAX_ACTIVE_JOBS = int(os.environ.get("LITS_MAX_ACTIVE_JOBS", "8"))
 _last_query: dict = {}
 
 
@@ -132,6 +136,15 @@ def _run_job(jk: str, req: frames.Request):
         job.update(status="ready", stage="ready", key=seq["key"])
     except Exception as e:  # noqa: BLE001
         job.update(status="error", error=f"{type(e).__name__}: {e}", trace=traceback.format_exc()[-2000:])
+    finally:
+        try:
+            with _lock:
+                active = {j.get("key") for j in _jobs.values() if j["status"] == "building" and j.get("key")}
+            if job.get("key"):
+                active.add(job["key"])
+            housekeeping.prune_cache(keep_sequences=active)
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
 
 
 @app.get("/api/sequence")
@@ -148,7 +161,13 @@ def api_sequence(q: str | None = None, ra: float | None = None, dec: float | Non
         job = _jobs.get(jk)
         if job and job["status"] == "error" and time.time() - job["started"] > 30:
             job = None  # allow a retry
+        if job and job["status"] == "ready" and not (config.CACHE_DIR / "seq" / job["key"] / "sequence.json").exists():
+            job = None  # its files were cleared to save space: build it again
         if job is None:
+            busy = sum(1 for j in _jobs.values() if j["status"] == "building")
+            if busy >= MAX_ACTIVE_JOBS:
+                raise HTTPException(503, "The search server is busy with other searches right now. "
+                                         "Please try again in a minute. Featured targets still open instantly.")
             job = {"status": "building", "stage": "queued", "done": 0, "total": 0, "started": time.time()}
             _jobs[jk] = job
             _pool.submit(_run_job, jk, req)

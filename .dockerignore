@@ -1,0 +1,12 @@
+.git
+**/.venv
+**/__pycache__
+**/*.pyc
+**/node_modules
+frontend/dist
+frontend/*.tsbuildinfo
+backend/cache
+backend/scripts/out
+_to_delete
+*.md
+!README.md

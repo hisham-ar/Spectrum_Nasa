@@ -1,0 +1,700 @@
+{
+ "schema": 2,
+ "key": "dfdd4db8a9838524",
+ "status": "ready",
+ "request": {
+  "ra": 133.81890825,
+  "dec": -7.247048,
+  "fov": 10.0,
+  "det": 4,
+  "view": "survey"
+ },
+ "target": {
+  "kind": "name",
+  "query": "WISE J085510.83-071442.5",
+  "ra": 133.81890825,
+  "dec": -7.247048,
+  "name": "WISE 0855\u22120714",
+  "otype": "BD*",
+  "label": "Brown dwarf",
+  "epoch": 2000.0,
+  "pmra": -8123.7,
+  "pmdec": 673.2,
+  "plx": 439.0,
+  "rv": null,
+  "notes": [
+   "Resolved by S=Simbad, IDIA (via url)"
+  ],
+  "moves": true
+ },
+ "centre": {
+  "ra": 133.76009848853474,
+  "dec": -7.242209618856272,
+  "note": "WISE 0855\u22120714 position propagated with its proper motion to 2025-11-08, the middle of the available SPHEREx dates"
+ },
+ "grid": {
+  "nx": 99,
+  "ny": 99,
+  "pixel_scale_arcsec": 6.15,
+  "crval": [
+   133.76009848853474,
+   -7.242209618856272
+  ],
+  "crpix": [
+   50.0,
+   50.0
+  ],
+  "cdelt": [
+   -0.0017083333333333334,
+   0.0017083333333333334
+  ],
+  "orientation": "north up, east left"
+ },
+ "detector": {
+  "id": 4,
+  "band_um": [
+   2.42,
+   3.82
+  ],
+  "label": "Ices and dust"
+ },
+ "stretch": {
+  "kind": "asinh",
+  "a": 0.05,
+  "lo": 0.019132450222969055,
+  "hi": 4.176856517791748,
+  "percentiles": [
+   50.0,
+   99.9
+  ],
+  "unit": "MJy/sr",
+  "shared": true
+ },
+ "frames": [
+  {
+   "index": 0,
+   "png": "frame_0.png",
+   "mask": "mask_0.png",
+   "f32": "frame_0.f32",
+   "release": "DR1",
+   "survey": 1,
+   "date_start": "2025-05-06",
+   "date_end": "2025-05-06",
+   "time_mid": "2025-05-06T12:24:35Z",
+   "n_exposures": 4,
+   "n_available": 4,
+   "n_failed": 0,
+   "exposures": [
+    {
+     "obs_id": "2025W19_1B_0241_1",
+     "time": "2025-05-06T12:21:22Z",
+     "wavelength_um": 3.357962543844767,
+     "bandwidth_um": 0.09474740815222671,
+     "saturated_px": 0,
+     "flagged_px": 809,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2025W19_1B_0241_2",
+     "time": "2025-05-06T12:23:31Z",
+     "wavelength_um": 3.4491739842025178,
+     "bandwidth_um": 0.09686112891585136,
+     "saturated_px": 0,
+     "flagged_px": 952,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2025W19_1B_0241_3",
+     "time": "2025-05-06T12:25:40Z",
+     "wavelength_um": 3.542240047484698,
+     "bandwidth_um": 0.09727693526430524,
+     "saturated_px": 0,
+     "flagged_px": 1011,
+     "near_saturated_px": 1
+    },
+    {
+     "obs_id": "2025W19_1B_0241_4",
+     "time": "2025-05-06T12:27:49Z",
+     "wavelength_um": 3.6382503742426904,
+     "bandwidth_um": 0.09897136334639114,
+     "saturated_px": 0,
+     "flagged_px": 802,
+     "near_saturated_px": 0
+    }
+   ],
+   "wavelength_range_um": [
+    3.358,
+    3.6383
+   ],
+   "saturated_px": 0,
+   "near_saturated_px": 2,
+   "flagged_px": 25,
+   "outside_px": 0,
+   "marker": {
+    "x": 48.32742123352148,
+    "y": 49.05582334625836,
+    "ra": 133.76125671774102,
+    "dec": -7.242304982275421
+   },
+   "summary": "Survey 1, detector 4, 2.42\u20133.82 \u00b5m, 4 exposures, 2025-05-06 to 2025-05-06, DR1"
+  },
+  {
+   "index": 1,
+   "png": "frame_1.png",
+   "mask": "mask_1.png",
+   "f32": "frame_1.f32",
+   "release": "DR1",
+   "survey": 2,
+   "date_start": "2025-10-31",
+   "date_end": "2025-11-03",
+   "time_mid": "2025-10-31T19:01:58Z",
+   "n_exposures": 16,
+   "n_available": 18,
+   "n_failed": 0,
+   "exposures": [
+    {
+     "obs_id": "2025W44_2B_0305_1",
+     "time": "2025-10-31T17:21:36Z",
+     "wavelength_um": 2.854068375618658,
+     "bandwidth_um": 0.08248181861416432,
+     "saturated_px": 0,
+     "flagged_px": 821,
+     "near_saturated_px": 4
+    },
+    {
+     "obs_id": "2025W44_2B_0305_2",
+     "time": "2025-10-31T17:23:45Z",
+     "wavelength_um": 2.931873900854389,
+     "bandwidth_um": 0.086557527248671,
+     "saturated_px": 0,
+     "flagged_px": 793,
+     "near_saturated_px": 3
+    },
+    {
+     "obs_id": "2025W44_2B_0305_3",
+     "time": "2025-10-31T17:25:54Z",
+     "wavelength_um": 3.011344710790322,
+     "bandwidth_um": 0.08692650986058721,
+     "saturated_px": 0,
+     "flagged_px": 824,
+     "near_saturated_px": 3
+    },
+    {
+     "obs_id": "2025W44_2B_0305_4",
+     "time": "2025-10-31T17:28:03Z",
+     "wavelength_um": 3.0949187638399165,
+     "bandwidth_um": 0.09106063186810234,
+     "saturated_px": 0,
+     "flagged_px": 808,
+     "near_saturated_px": 3
+    },
+    {
+     "obs_id": "2025W44_2B_0321_2",
+     "time": "2025-10-31T18:54:07Z",
+     "wavelength_um": 3.266142578881073,
+     "bandwidth_um": 0.09540895797651387,
+     "saturated_px": 0,
+     "flagged_px": 831,
+     "near_saturated_px": 1
+    },
+    {
+     "obs_id": "2025W44_2B_0322_1",
+     "time": "2025-10-31T18:56:35Z",
+     "wavelength_um": 3.354157899854695,
+     "bandwidth_um": 0.09739684628902051,
+     "saturated_px": 0,
+     "flagged_px": 826,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2025W44_2B_0322_2",
+     "time": "2025-10-31T18:58:44Z",
+     "wavelength_um": 3.4439522186552245,
+     "bandwidth_um": 0.09856715113630717,
+     "saturated_px": 0,
+     "flagged_px": 743,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2025W44_2B_0322_3",
+     "time": "2025-10-31T19:00:53Z",
+     "wavelength_um": 3.5367600260801,
+     "bandwidth_um": 0.10062062133821882,
+     "saturated_px": 0,
+     "flagged_px": 754,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2025W44_2B_0322_4",
+     "time": "2025-10-31T19:03:02Z",
+     "wavelength_um": 3.632326388073433,
+     "bandwidth_um": 0.10198963561922357,
+     "saturated_px": 0,
+     "flagged_px": 709,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2025W44_2B_0339_1",
+     "time": "2025-10-31T20:34:39Z",
+     "wavelength_um": 3.7300671433398565,
+     "bandwidth_um": 0.10160843560783835,
+     "saturated_px": 0,
+     "flagged_px": 645,
+     "near_saturated_px": 1
+    },
+    {
+     "obs_id": "2025W44_2B_0339_2",
+     "time": "2025-10-31T20:36:48Z",
+     "wavelength_um": 3.8314346092489866,
+     "bandwidth_um": 0.10122581519089283,
+     "saturated_px": 0,
+     "flagged_px": 404,
+     "near_saturated_px": 0
+    },
+    {
+     "obs_id": "2025W45_1A_0095_4",
+     "time": "2025-11-03T10:37:42Z",
+     "wavelength_um": 2.4388448376681384,
+     "bandwidth_um": 0.050722203086708655,
+     "saturated_px": 0,
+     "flagged_px": 8613,
+     "near_saturated_px": 5
+    },
+    {
+     "obs_id": "2025W45_1A_0110_2",
+     "time": "2025-11-03T12:12:35Z",
+     "wavelength_um": 2.6320477533917805,
+     "bandwidth_um": 0.07510588878014188,
+     "saturated_px": 0,
+     "flagged_px": 763,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2025W45_1A_0110_3",
+     "time": "2025-11-03T12:14:44Z",
+     "wavelength_um": 2.703276944310561,
+     "bandwidth_um": 0.07725173036919701,
+     "saturated_px": 0,
+     "flagged_px": 812,
+     "near_saturated_px": 3
+    },
+    {
+     "obs_id": "2025W45_1A_0110_4",
+     "time": "2025-11-03T12:16:53Z",
+     "wavelength_um": 2.7767403114516833,
+     "bandwidth_um": 0.08041502815912296,
+     "saturated_px": 0,
+     "flagged_px": 905,
+     "near_saturated_px": 3
+    },
+    {
+     "obs_id": "2025W45_1A_0153_1",
+     "time": "2025-11-03T17:01:07Z",
+     "wavelength_um": 2.494767627705006,
+     "bandwidth_um": 0.07263157625776306,
+     "saturated_px": 3,
+     "flagged_px": 775,
+     "near_saturated_px": 1
+    }
+   ],
+   "wavelength_range_um": [
+    2.4388,
+    3.8314
+   ],
+   "saturated_px": 3,
+   "near_saturated_px": 2,
+   "flagged_px": 0,
+   "outside_px": 0,
+   "marker": {
+    "x": 48.972148739546995,
+    "y": 49.00231162600254,
+    "ra": 133.7601464504068,
+    "dec": -7.242213567881493
+   },
+   "summary": "Survey 2, detector 4, 2.42\u20133.82 \u00b5m, 16 exposures, 2025-10-31 to 2025-11-03, DR1"
+  },
+  {
+   "index": 2,
+   "png": "frame_2.png",
+   "mask": "mask_2.png",
+   "f32": "frame_2.f32",
+   "release": "DR1",
+   "survey": 3,
+   "date_start": "2026-05-01",
+   "date_end": "2026-05-05",
+   "time_mid": "2026-05-03T06:54:19Z",
+   "n_exposures": 14,
+   "n_available": 14,
+   "n_failed": 0,
+   "exposures": [
+    {
+     "obs_id": "2026W18_2A_0264_1",
+     "time": "2026-05-01T15:44:24Z",
+     "wavelength_um": 3.735311611713202,
+     "bandwidth_um": 0.10167179034159181,
+     "saturated_px": 0,
+     "flagged_px": 787,
+     "near_saturated_px": 1
+    },
+    {
+     "obs_id": "2026W18_2A_0424_2",
+     "time": "2026-05-02T08:01:52Z",
+     "wavelength_um": 2.4267162921487544,
+     "bandwidth_um": 0.04458733601965445,
+     "saturated_px": 0,
+     "flagged_px": 11374,
+     "near_saturated_px": 0
+    },
+    {
+     "obs_id": "2026W18_2A_0424_3",
+     "time": "2026-05-02T08:04:01Z",
+     "wavelength_um": 2.4757259326257643,
+     "bandwidth_um": 0.07155307941593692,
+     "saturated_px": 0,
+     "flagged_px": 845,
+     "near_saturated_px": 1
+    },
+    {
+     "obs_id": "2026W18_2A_0424_4",
+     "time": "2026-05-02T08:06:10Z",
+     "wavelength_um": 2.5428437501097707,
+     "bandwidth_um": 0.07366354000466359,
+     "saturated_px": 0,
+     "flagged_px": 952,
+     "near_saturated_px": 3
+    },
+    {
+     "obs_id": "2026W18_2A_0684_1",
+     "time": "2026-05-03T06:48:57Z",
+     "wavelength_um": 2.611331932856183,
+     "bandwidth_um": 0.07501363095687434,
+     "saturated_px": 3,
+     "flagged_px": 794,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2026W18_2A_0684_2",
+     "time": "2026-05-03T06:51:06Z",
+     "wavelength_um": 2.6825576978873764,
+     "bandwidth_um": 0.07640247995740966,
+     "saturated_px": 0,
+     "flagged_px": 840,
+     "near_saturated_px": 4
+    },
+    {
+     "obs_id": "2026W18_2A_0684_3",
+     "time": "2026-05-03T06:53:15Z",
+     "wavelength_um": 2.7557511063303832,
+     "bandwidth_um": 0.0773427508360212,
+     "saturated_px": 2,
+     "flagged_px": 861,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2026W18_2A_0684_4",
+     "time": "2026-05-03T06:55:24Z",
+     "wavelength_um": 2.8306575631635584,
+     "bandwidth_um": 0.0804088535646068,
+     "saturated_px": 0,
+     "flagged_px": 926,
+     "near_saturated_px": 4
+    },
+    {
+     "obs_id": "2026W19_1A_0201_1",
+     "time": "2026-05-04T13:41:54Z",
+     "wavelength_um": 3.268658046322292,
+     "bandwidth_um": 0.09379454268361585,
+     "saturated_px": 0,
+     "flagged_px": 853,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2026W19_1A_0227_1",
+     "time": "2026-05-04T15:21:06Z",
+     "wavelength_um": 2.907095067987591,
+     "bandwidth_um": 0.0844036755007,
+     "saturated_px": 0,
+     "flagged_px": 869,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2026W19_1A_0227_2",
+     "time": "2026-05-04T15:23:15Z",
+     "wavelength_um": 2.9863783281276617,
+     "bandwidth_um": 0.08478660500842088,
+     "saturated_px": 0,
+     "flagged_px": 849,
+     "near_saturated_px": 2
+    },
+    {
+     "obs_id": "2026W19_1A_0493_1",
+     "time": "2026-05-05T07:42:03Z",
+     "wavelength_um": 3.069866155823061,
+     "bandwidth_um": 0.08910801660801948,
+     "saturated_px": 0,
+     "flagged_px": 858,
+     "near_saturated_px": 3
+    },
+    {
+     "obs_id": "2026W19_1A_0594_1",
+     "time": "2026-05-05T14:08:36Z",
+     "wavelength_um": 3.154475706052193,
+     "bandwidth_um": 0.09192580944910837,
+     "saturated_px": 0,
+     "flagged_px": 884,
+     "near_saturated_px": 1
+    },
+    {
+     "obs_id": "2026W19_1A_0594_2",
+     "time": "2026-05-05T14:10:45Z",
+     "wavelength_um": 3.2405677477523627,
+     "bandwidth_um": 0.09381125433241201,
+     "saturated_px": 0,
+     "flagged_px": 991,
+     "near_saturated_px": 3
+    }
+   ],
+   "wavelength_range_um": [
+    2.4267,
+    3.7353
+   ],
+   "saturated_px": 2,
+   "near_saturated_px": 1,
+   "flagged_px": 3,
+   "outside_px": 0,
+   "marker": {
+    "x": 49.63574956533027,
+    "y": 48.947233439591,
+    "ra": 133.75900368232288,
+    "dec": -7.242119474674149
+   },
+   "summary": "Survey 3, detector 4, 2.42\u20133.82 \u00b5m, 14 exposures, 2026-05-01 to 2026-05-05, DR1"
+  }
+ ],
+ "coverage": {
+  "1": [
+   {
+    "detector": 1,
+    "release": "DR1",
+    "survey": 1,
+    "date_start": "2025-05-06",
+    "date_end": "2025-05-06",
+    "n_exposures": 4
+   },
+   {
+    "detector": 1,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2025-10-31",
+    "date_end": "2025-11-03",
+    "n_exposures": 18
+   },
+   {
+    "detector": 1,
+    "release": "DR1",
+    "survey": 3,
+    "date_start": "2026-05-01",
+    "date_end": "2026-05-05",
+    "n_exposures": 14
+   }
+  ],
+  "2": [
+   {
+    "detector": 2,
+    "release": "DR1",
+    "survey": 1,
+    "date_start": "2025-05-06",
+    "date_end": "2025-05-06",
+    "n_exposures": 8
+   },
+   {
+    "detector": 2,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2025-11-07",
+    "date_end": "2025-11-10",
+    "n_exposures": 19
+   },
+   {
+    "detector": 2,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2025-12-11",
+    "date_end": "2025-12-13",
+    "n_exposures": 6
+   },
+   {
+    "detector": 2,
+    "release": "DR1",
+    "survey": 3,
+    "date_start": "2026-05-01",
+    "date_end": "2026-05-14",
+    "n_exposures": 15
+   }
+  ],
+  "3": [
+   {
+    "detector": 3,
+    "release": "DR1",
+    "survey": 1,
+    "date_start": "2025-05-05",
+    "date_end": "2025-05-05",
+    "n_exposures": 3
+   },
+   {
+    "detector": 3,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2025-11-10",
+    "date_end": "2025-12-13",
+    "n_exposures": 21
+   },
+   {
+    "detector": 3,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2026-04-21",
+    "date_end": "2026-05-11",
+    "n_exposures": 21
+   }
+  ],
+  "4": [
+   {
+    "detector": 4,
+    "release": "DR1",
+    "survey": 1,
+    "date_start": "2025-05-06",
+    "date_end": "2025-05-06",
+    "n_exposures": 4
+   },
+   {
+    "detector": 4,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2025-10-31",
+    "date_end": "2025-11-03",
+    "n_exposures": 18
+   },
+   {
+    "detector": 4,
+    "release": "DR1",
+    "survey": 3,
+    "date_start": "2026-05-01",
+    "date_end": "2026-05-05",
+    "n_exposures": 14
+   }
+  ],
+  "5": [
+   {
+    "detector": 5,
+    "release": "DR1",
+    "survey": 1,
+    "date_start": "2025-05-06",
+    "date_end": "2025-05-06",
+    "n_exposures": 8
+   },
+   {
+    "detector": 5,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2025-11-07",
+    "date_end": "2025-11-10",
+    "n_exposures": 19
+   },
+   {
+    "detector": 5,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2025-12-11",
+    "date_end": "2025-12-13",
+    "n_exposures": 6
+   },
+   {
+    "detector": 5,
+    "release": "DR1",
+    "survey": 3,
+    "date_start": "2026-05-01",
+    "date_end": "2026-05-14",
+    "n_exposures": 15
+   }
+  ],
+  "6": [
+   {
+    "detector": 6,
+    "release": "DR1",
+    "survey": 1,
+    "date_start": "2025-05-05",
+    "date_end": "2025-05-05",
+    "n_exposures": 3
+   },
+   {
+    "detector": 6,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2025-11-10",
+    "date_end": "2025-12-13",
+    "n_exposures": 21
+   },
+   {
+    "detector": 6,
+    "release": "DR1",
+    "survey": 2,
+    "date_start": "2026-04-21",
+    "date_end": "2026-05-11",
+    "n_exposures": 21
+   }
+  ]
+ },
+ "comparability": {
+  "mixed_releases": false,
+  "channel_mix_differs": true,
+  "notes": [
+   "These frames mix noticeably different wavelengths within the detector band, so they are not directly comparable for brightness."
+  ]
+ },
+ "provenance": {
+  "zodi_subtracted": true,
+  "combine": "inverse-variance weighted mean",
+  "saturation_flags": [
+   "NONLINEAR",
+   "BLOOM"
+  ],
+  "masked_flags": [
+   "TRANSIENT",
+   "SUR_ERROR",
+   "NONFUNC",
+   "DICHROIC",
+   "MISSING_DATA",
+   "HOT",
+   "COLD",
+   "PHANMISS",
+   "PERSIST",
+   "OUTLIER",
+   "STREAK",
+   "SNOWBALL",
+   "HALO",
+   "SATELLITE_HALO"
+  ],
+  "near_saturation_flags": [
+   "OVERFLOW"
+  ],
+  "reprojection": "bilinear onto a TAN grid at 6.15\"/px (astropy + reproject)",
+  "collections": [
+   "spherex_dr1",
+   "spherex_dr1_deep",
+   "spherex_qr3",
+   "spherex_qr3_deep"
+  ],
+  "queried_at": "2026-11-14T10:33:38+00:00",
+  "built_at": "2026-11-14T16:50:07+00:00",
+  "source": "NASA/IPAC Infrared Science Archive (IRSA), SPHEREx spectral images"
+ },
+ "timings": {
+  "query_s": 9.23,
+  "download_s": 33.63,
+  "total_s": 35.38,
+  "cutouts": 34,
+  "cutout_mb": 167.57,
+  "cutouts_cached": 0
+ }
+}
