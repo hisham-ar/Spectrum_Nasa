@@ -233,3 +233,12 @@ def test_name_lookup_is_saved_and_used_offline(tmp_path, monkeypatch):
         rs.resolve("Vega", client=httpx.Client(transport=httpx.MockTransport(offline)))
     # Targets survive a round trip through the sequence JSON.
     assert Target.from_dict(t1.to_dict()) == t1
+
+
+def test_display_names():
+    from lits.resolve import display_name
+    assert display_name("hamal", "* alf Ari") == "Hamal (α Ari)"
+    assert display_name("Barnard's star", "NAME Barnard's star") == "Barnard's star"
+    assert display_name("eps Ind B", "* eps Ind B") == "ε Ind B"
+    assert display_name("rw aur", "V* RW Aur") == "RW Aur"
+    assert display_name("x", "* tet01 Ori C") == "θ¹ Ori C"

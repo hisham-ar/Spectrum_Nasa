@@ -142,8 +142,10 @@ def api_sequence(q: str | None = None, ra: float | None = None, dec: float | Non
     if job["status"] == "ready":
         seq_path = config.CACHE_DIR / "seq" / job["key"] / "sequence.json"
         if seq_path.exists():
-            return FileResponse(seq_path, media_type="application/json",
-                                headers={"X-Base": f"/api/seq/{job['key']}/"})
+            seq = json.loads(seq_path.read_text(encoding="utf-8"))
+            if t is not None and seq.get("target"):
+                seq["target"]["name"] = t.name   # names improve; frames saved earlier stay valid
+            return JSONResponse(seq, headers={"X-Base": f"/api/seq/{job['key']}/"})
     out = {k: v for k, v in job.items() if k != "trace"}
     out["elapsed_s"] = round(time.time() - job["started"], 1)
     return JSONResponse(out, status_code=202 if job["status"] == "building" else 502)

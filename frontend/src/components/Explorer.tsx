@@ -8,6 +8,7 @@ import SkyCanvas, { type ViewXform } from "./SkyCanvas";
 import Timeline, { longDate, monthSpan } from "./Timeline";
 import SpectralRail from "./SpectralRail";
 import DataPanel from "./DataPanel";
+import SaturationNote from "./SaturationNote";
 import SearchBox from "./SearchBox";
 
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -269,6 +270,9 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   const marker = (si: number) => (channels ? channels[channels.length > 1 ? 1 : 0].seq.frames[stops[si]?.idx[channels.length > 1 ? 1 : 0]]?.marker ?? null : null);
   const ariaFor = (si: number) => stops[si]?.meta.summary ?? "SPHEREx frame";
   const smooth = !st.px;
+  // A real saturated blob (not a stray pixel) anywhere in the frames on screen.
+  const SAT_NOTE_MIN_PX = 12;
+  const hasSaturatedStar = !!channels?.some((c) => c.seq.frames.some((f) => f.saturated_px >= SAT_NOTE_MIN_PX));
   const share = async () => {
     try { await navigator.clipboard.writeText(window.location.href); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* ignore */ }
   };
@@ -336,6 +340,10 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
               </>
             )}
           </div>
+        )}
+
+        {hasSaturatedStar && (
+          <SaturationNote suppressed={st.flags} onShowPixels={() => { update({ flags: true }); if (window.innerWidth >= 1100) setDrawer(true); }} />
         )}
 
         <div className="dock" ref={dockRef}>

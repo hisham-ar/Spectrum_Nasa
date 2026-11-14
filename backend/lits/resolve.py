@@ -161,15 +161,36 @@ def _f(el: ET.Element | None, tag: str) -> float | None:
 _ID_PREFIXES = ("NAME ", "V* ", "* ", "** ", "EM* ")
 
 
+_GREEK = {"alf": "α", "bet": "β", "gam": "γ", "del": "δ", "eps": "ε", "zet": "ζ", "eta": "η",
+          "tet": "θ", "iot": "ι", "kap": "κ", "lam": "λ", "mu.": "μ", "nu.": "ν", "ksi": "ξ",
+          "omi": "ο", "pi.": "π", "rho": "ρ", "sig": "σ", "tau": "τ", "ups": "υ", "phi": "φ",
+          "khi": "χ", "psi": "ψ", "ome": "ω"}
+
+
 def clean_name(name: str) -> str:
     """SIMBAD main identifiers carry catalogue prefixes ("NAME Barnard's star",
-    "V* RW Aur"); show the plain name."""
+    "V* RW Aur") and spelled-out Greek letters ("alf Ari"); show the plain name."""
     n = " ".join(name.split())
     for p in _ID_PREFIXES:
         if n.startswith(p):
             n = n[len(p):]
             break
+    first, _, rest = n.partition(" ")
+    m = re.fullmatch(r"(alf|bet|gam|del|eps|zet|eta|tet|iot|kap|lam|mu\.|nu\.|ksi|omi|pi\.|rho|sig|tau|ups|phi|khi|psi|ome)(0?\d*)", first)
+    if m and rest:
+        sup = "".join("⁰¹²³⁴⁵⁶⁷⁸⁹"[int(c)] for c in m.group(2).lstrip("0"))
+        return f"{_GREEK[m.group(1)]}{sup} {rest}"
     return n[:1].upper() + n[1:] if n else n
+
+
+def display_name(query: str, main_id: str) -> str:
+    """A visitor who types a star's proper name ("hamal") should see it, with the
+    catalogue name alongside: "Hamal (α Ari)"."""
+    plain = clean_name(main_id)
+    q = " ".join(query.split())
+    if re.fullmatch(r"[A-Za-z][A-Za-z'\-]{2,}", q) and q.lower() not in plain.lower():
+        return f"{q[:1].upper()}{q[1:].lower()} ({plain})"
+    return plain
 
 
 def parse_sesame(xml_text: str, query: str) -> Target | None:
@@ -186,7 +207,7 @@ def parse_sesame(xml_text: str, query: str) -> Target | None:
         otype = otype_el.text.strip() if otype_el is not None and otype_el.text else None
         t = Target(
             kind="name", query=query, ra=ra, dec=dec,
-            name=clean_name(oname_el.text.strip() if oname_el is not None and oname_el.text else query),
+            name=display_name(query, oname_el.text.strip() if oname_el is not None and oname_el.text else query),
             otype=otype, label=otype_label(otype), epoch=2000.0,
             pmra=_f(pm, "pmRA"), pmdec=_f(pm, "pmDE"),
             plx=_f(plx, "v"), rv=_f(vel, "v"),
