@@ -4,7 +4,8 @@ import { hasLocation, readUrl, toSearch, type UrlState } from "../lib/url";
 import { DETECTORS, FOV_PRESETS, type AsteroidResult, type BuildStatus, type FeaturedCard, type FrameMeta,
   type Sequence, type SmallBody, type TargetInfo } from "../lib/types";
 import { DEFAULT_LOOK, FALLBACK_STRETCH, loadPlane, renderGray, renderRGB, type Look, type Plane, type Stretch } from "../lib/render";
-import SkyCanvas, { type ViewXform } from "./SkyCanvas";
+import SkyCanvas, { type CanvasLabel, type ViewXform } from "./SkyCanvas";
+import { skyToPixel } from "../lib/coords";
 import Timeline, { longDate, monthSpan } from "./Timeline";
 import SpectralRail from "./SpectralRail";
 import DataPanel from "./DataPanel";
@@ -12,6 +13,7 @@ import SaturationNote from "./SaturationNote";
 import RocketGame from "./RocketGame";
 import { SAT_NOTE_MIN_PX, saturationSwing } from "../lib/saturation";
 import SearchBox from "./SearchBox";
+import GridView, { matchFrame } from "./GridView";
 
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 const MAX_BLINK_HZ = 3; // WCAG 2.3.1: never more than 3 flashes per second
@@ -68,15 +70,23 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   const [copied, setCopied] = useState(false);
   const [gameOpen, setGameOpen] = useState(false);
   const [slowLoad, setSlowLoad] = useState(false);
+  const [linked, setLinked] = useState(true);                       // grid: zoom/pan all panels together
+  const [gridLoading, setGridLoading] = useState<number | null>(null); // grid: detector being fetched
+  const [gridFailed, setGridFailed] = useState<Record<number, string>>({});
   const [astRes, setAstRes] = useState<Record<number, AsteroidResult | "loading" | string>>({});
   const dockRef = useRef<HTMLDivElement>(null);
   const [dockH, setDockH] = useState(150);
+  const headRef = useRef<HTMLElement>(null);
+  const [headH, setHeadH] = useState(120);
   useEffect(() => {
     const el = dockRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([e]) => setDockH(e.contentRect.height + 24));
     ro.observe(el);
-    return () => ro.disconnect();
+    const hd = headRef.current;
+    const ro2 = new ResizeObserver(() => hd && setHeadH(hd.offsetTop + hd.offsetHeight));
+    if (hd) ro2.observe(hd);
+    return () => { ro.disconnect(); ro2.disconnect(); };
   });
 
   // --- URL sync ---------------------------------------------------------------
@@ -99,8 +109,10 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   const card = st.target ? featured.find((c) => c.slug === st.target) : undefined;
   const challenge = st.target ? CHALLENGE_TARGETS.find((c) => c.slug === st.target) : undefined;
   const colourDets = colourDetsFor(card, st.view);
-  const dets: number[] = st.col ? colourDets : [st.det];
-  const locKey = `${featuredReady}|${st.target ?? ""}|${st.q ?? ""}|${st.ra ?? ""}|${st.dec ?? ""}|${st.fov}|${dets.join(",")}|${st.view}|${card ? "c" : ""}`;
+  // Grid loads the selected detector first, then the rest; changing the selection within the grid doesn't reload.
+  const dets: number[] = st.grid ? [st.det, ...[1, 2, 3, 4, 5, 6].filter((d) => d !== st.det)] : st.col ? colourDets : [st.det];
+  const detKey = st.grid ? "grid" : dets.join(",");
+  const locKey = `${featuredReady}|${st.target ?? ""}|${st.q ?? ""}|${st.ra ?? ""}|${st.dec ?? ""}|${st.fov}|${detKey}|${st.view}|${card ? "c" : ""}`;
 
   // --- load sequences + frames ----------------------------------------------------------
   useEffect(() => {
@@ -108,6 +120,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     if (st.target && !featuredReady) return;
     const ac = new AbortController();
     setErr(null); setBuild(null); setBuildFrac(null); setChannels(null); setPlaying(false); setAstRes({});
+    setGridLoading(null); setGridFailed({});
     const loc: LocationParams = card ? { q: card.q ?? card.name } : challenge ? { q: challenge.q }
       : st.q ? { q: st.q } : { ra: st.ra, dec: st.dec };
     const one = async (det: number, k: number): Promise<Channel> => {
@@ -115,7 +128,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
       const seq = folder && card && st.fov === card.fov
         ? await fetchFeaturedSequence(folder, ac.signal)
         : await fetchSequence(loc, st.fov, det, st.view, (b: BuildStatus) => {
-          const pre = dets.length > 1 ? `Detector ${det} (${k + 1} of ${dets.length}): ` : "";
+          const pre = dets.length > 1 && !st.grid ? `Detector ${det} (${k + 1} of ${dets.length}): ` : "";
           setBuild(pre + stageText(b));
           setBuildFrac(b.total ? b.done / b.total : null);
         }, ac.signal);
@@ -123,7 +136,36 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
       const planes = await Promise.all(seq.frames.map((f) => loadPlane(seq.base!, f, seq.grid.nx, seq.grid.ny, seq.query).catch(() => null)));
       return { det, seq, planes };
     };
+    const dataDate = (chs: Channel[]) => {
+      const s0 = chs[0].seq;
+      const latest = chs.flatMap((c) => c.seq.frames).reduce((m, f) => (f.date_end > m ? f.date_end : m), "");
+      const checked = String(s0.provenance.queried_at ?? s0.provenance.built_at ?? "").slice(0, 10);
+      onDataDate(latest ? `${longDate(latest)}${checked ? ` (archive checked ${longDate(checked)})` : ""}` : null);
+    };
     (async () => {
+      if (st.grid) {
+        // Show each detector as soon as it's ready; one failing detector doesn't stop the others.
+        const chs: Channel[] = [];
+        const failed: Record<number, string> = {};
+        for (let k = 0; k < dets.length; k++) {
+          setGridLoading(dets[k]); setBuild(null); setBuildFrac(null);
+          try {
+            chs.push(await one(dets[k], k));
+          } catch (e) {
+            if (ac.signal.aborted || (e as Error).name === "AbortError") return;
+            failed[dets[k]] = (e as Error).message;
+            setGridFailed({ ...failed });
+            continue;
+          }
+          if (ac.signal.aborted) return;
+          if (chs.length === 1) setXf({ zoom: 1, cx: chs[0].seq.grid.nx / 2, cy: chs[0].seq.grid.ny / 2 });
+          setChannels([...chs]);
+          dataDate(chs);
+        }
+        setGridLoading(null);
+        if (!chs.length) setErr(Object.values(failed)[0] ?? "No detector could be loaded.");
+        return;
+      }
       try {
         const chs: Channel[] = [];
         for (let k = 0; k < dets.length; k++) chs.push(await one(dets[k], k));   // one at a time: the archive is shared
@@ -131,9 +173,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
         setChannels(chs);
         const s0 = chs[0].seq;
         setXf({ zoom: 1, cx: s0.grid.nx / 2, cy: s0.grid.ny / 2 });
-        const latest = chs.flatMap((c) => c.seq.frames).reduce((m, f) => (f.date_end > m ? f.date_end : m), "");
-        const checked = String(s0.provenance.queried_at ?? s0.provenance.built_at ?? "").slice(0, 10);
-        onDataDate(latest ? `${longDate(latest)}${checked ? ` (archive checked ${longDate(checked)})` : ""}` : null);
+        dataDate(chs);
       } catch (e) {
         if ((e as Error).name !== "AbortError") setErr((e as Error).message);
       }
@@ -145,6 +185,10 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   // --- stops: one per survey (single) or per survey common to all colour channels ------
   const stops: Stop[] = useMemo(() => {
     if (!channels) return [];
+    if (st.grid) {   // the timeline follows the selected detector; other panels match it by survey
+      const ref = channels.find((c) => c.det === st.det) ?? channels[0];
+      return ref.seq.frames.map((f, i) => ({ idx: [i], meta: f, metas: [f] }));
+    }
     if (channels.length === 1) return channels[0].seq.frames.map((f, i) => ({ idx: [i], meta: f, metas: [f] }));
     const [b, g, r] = channels;
     const out: Stop[] = [];
@@ -154,14 +198,14 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
       if (ib >= 0 && ir >= 0) out.push({ idx: [ib, ig, ir], meta: fg, metas: [b.seq.frames[ib], fg, r.seq.frames[ir]] });
     });
     return out;
-  }, [channels]);
+  }, [channels, st.grid, st.det]);
 
   const n = stops.length;
   const clamp = (i: number | undefined, d: number) => (i === undefined || !Number.isFinite(i) ? d : Math.max(0, Math.min(n - 1, Math.round(i))));
   const frameIdx = clamp(st.frame, 0);
   const a = clamp(st.a, 0);
   const b = clamp(st.b, n - 1);
-  const cmp = n < 2 ? "none" : st.cmp;
+  const cmp = n < 2 || (st.grid && st.cmp === "side") ? "none" : st.cmp;
 
   // --- composed images (cached per stop for the current look) ---------------------------
   const cache = useRef(new Map<string, ImageData>());
@@ -250,13 +294,15 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
         else if (n > 1) setPlaying((p) => !p);
       } else if (e.key === "b" || e.key === "B") {
         if (n > 1) update({ cmp: cmp === "blink" ? "none" : "blink" });
+      } else if (e.key === "g" || e.key === "G") {
+        update({ grid: !st.grid, col: false, frame: undefined, a: undefined, b: undefined });
       } else if (e.key === "i" || e.key === "I") {
         setDrawer((d) => !d);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [channels, cmp, n, frameIdx, update, gameOpen]);
+  }, [channels, cmp, n, frameIdx, update, gameOpen, st.grid]);
 
   const goTarget = (t: TargetInfo) => {
     if (t.kind === "coords") onNavigate(`/?ra=${t.ra.toFixed(5)}&dec=${t.dec.toFixed(5)}&fov=${st.fov}`);
@@ -273,12 +319,18 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     return <Hero featured={featured} featuredReady={featuredReady} onPickFeatured={goCard} onResolved={goTarget} onChallenge={goChallenge} onNavigate={onNavigate} />;
   }
 
-  const ch0 = channels?.[0];
+  const ch0 = st.grid ? (channels?.find((c) => c.det === st.det) ?? channels?.[0]) : channels?.[0];
   const stop = stops[cmp === "side" ? a : shown];
   const pairMeta = n >= 2 ? ([stops[a].meta, stops[b].meta] as [FrameMeta, FrameMeta]) : undefined;
   const title = ch0?.seq.target?.name ?? card?.name ?? challenge?.name ?? st.q ?? `${st.ra?.toFixed(4)}, ${st.dec?.toFixed(4)}`;
   const marker = (si: number) => (channels ? channels[channels.length > 1 ? 1 : 0].seq.frames[stops[si]?.idx[channels.length > 1 ? 1 : 0]]?.marker ?? null : null);
   const ariaFor = (si: number) => stops[si]?.meta.summary ?? "SPHEREx frame";
+  // Labelled circles for a Featured card's named objects (fixed sky positions), only on the card's own view.
+  const labelsFor = (seq: Sequence | undefined): CanvasLabel[] | undefined =>
+    card?.annotations && seq && st.fov === card.fov
+      ? card.annotations.map((an) => ({ ...skyToPixel(seq.grid, an.ra, an.dec), r: (an.radius_arcsec ?? 30) / seq.grid.pixel_scale_arcsec, label: an.label }))
+      : undefined;
+  const labels = labelsFor(ch0?.seq);
   const smooth = !st.px;
   // A real saturated blob (not a stray pixel) anywhere in the frames on screen.
   const satSwing = channels ? saturationSwing(channels.map((c) => ({ det: c.det, seq: c.seq }))) : null;
@@ -287,32 +339,41 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     try { await navigator.clipboard.writeText(window.location.href); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* ignore */ }
   };
   const det = DETECTORS[st.det];
-  const bandText = st.col
+  const bandText = st.grid
+    ? `All six detectors, 0.75 to 5.00 µm. The timeline follows detector ${st.det}.`
+    : st.col
     ? `False colour: ${colourDets.map((d, k) => `${["blue", "green", "red"][k]} is detector ${d}`).join(", ")}`
     : `Detector ${st.det}, ${det.band[0].toFixed(2)} to ${det.band[1].toFixed(2)} µm`;
 
   return (
     <main className={`explorer ${drawer ? "drawer-open" : ""}`}>
-      <section className="stage" aria-label="Sky view" style={{ ["--dock-h" as string]: `${dockH}px` }}>
+      <section className="stage" aria-label="Sky view" style={{ ["--dock-h" as string]: `${dockH}px`, ["--head-h" as string]: `${headH}px` }}>
+        {st.grid && channels ? (
+          <GridView dets={[1, 2, 3, 4, 5, 6]} channels={channels} refDet={st.det} refFrame={stops[shown]?.meta}
+            loading={gridLoading !== null ? { det: gridLoading, text: build, frac: buildFrac } : null} failed={gridFailed}
+            look={look} smooth={smooth} showMarker={st.marker} linked={linked} xform={xf} onXform={setXf}
+            labelsFor={labelsFor} onPick={(d) => update({ grid: false, det: d, frame: undefined, a: undefined, b: undefined })} />
+        ) : (
         <div className={`canvases ${cmp === "side" ? "two" : ""}`}>
           {channels && n > 0 && (cmp === "side" ? (
             [a, b].map((si, k) => (
               <figure key={k} className="pane">
-                <SkyCanvas image={imageFor(si)} smooth={smooth} marker={marker(si)} showMarker={st.marker} bodies={bodiesFor(si)}
+                <SkyCanvas image={imageFor(si)} smooth={smooth} marker={marker(si)} showMarker={st.marker} bodies={bodiesFor(si)} labels={labels}
                   pixelScale={ch0!.seq.grid.pixel_scale_arcsec} xform={xf} onXform={setXf} ariaLabel={ariaFor(si)} chrome={k === 1} />
                 <figcaption><b>{k ? "B" : "A"}</b> {monthSpan(stops[si].meta.date_start, stops[si].meta.date_end)}, survey {stops[si].meta.survey}, {stops[si].meta.release}</figcaption>
               </figure>
             ))
           ) : (
             <figure className="pane">
-              <SkyCanvas image={imageFor(shown)} smooth={smooth} marker={marker(shown)} showMarker={st.marker} bodies={bodiesFor(shown)}
+              <SkyCanvas image={imageFor(shown)} smooth={smooth} marker={marker(shown)} showMarker={st.marker} bodies={bodiesFor(shown)} labels={labels}
                 pixelScale={ch0!.seq.grid.pixel_scale_arcsec} xform={xf} onXform={setXf} ariaLabel={ariaFor(shown)} />
               {cmp === "blink" && <figcaption className="blink-tag"><b>{phase ? "B" : "A"}</b> {monthSpan(stops[shown].meta.date_start, stops[shown].meta.date_end)}</figcaption>}
             </figure>
           ))}
         </div>
+        )}
 
-        <header className="stage-head">
+        <header className="stage-head" ref={headRef}>
           <h1>{title}</h1>
           {stop && (
             <p className="stage-when">
@@ -326,6 +387,10 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
           <button className="tool" aria-label="Zoom in" onClick={() => setXf((x) => ({ ...x, zoom: Math.min(20, x.zoom * 1.4) }))}>+</button>
           <button className="tool" aria-label="Zoom out" onClick={() => setXf((x) => ({ ...x, zoom: Math.max(0.5, x.zoom / 1.4) }))}>−</button>
           <button className="tool wide" onClick={() => ch0 && setXf({ zoom: 1, cx: ch0.seq.grid.nx / 2, cy: ch0.seq.grid.ny / 2 })}>Fit</button>
+          {st.grid && (
+            <button className={`tool wide ${linked ? "on" : ""}`} aria-pressed={linked} onClick={() => setLinked((l) => !l)}
+              title="Zoom and move all six panels together">{linked ? "Linked" : "Not linked"}</button>
+          )}
           <button className="tool wide" onClick={share}>{copied ? "Copied" : "Copy link"}</button>
           <button className={`tool wide ${drawer ? "on" : ""}`} aria-expanded={drawer} onClick={() => setDrawer((d) => !d)} title="I">Details</button>
         </div>
@@ -343,7 +408,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
           </div>
         )}
 
-        {!(gameOpen && !err) && (err || !channels || n === 0) && (
+        {!(gameOpen && !err) && (err || !channels || (n === 0 && !st.grid)) && (
           <div className={`status ${err ? "error" : ""}`} role={err ? "alert" : "status"} aria-live="polite">
             {err ? (
               <>
@@ -367,13 +432,14 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
         )}
 
         {hasSaturatedStar && (
-          <SaturationNote suppressed={st.flags} swing={satSwing} onShowPixels={() => { update({ flags: true }); if (window.innerWidth >= 1100) setDrawer(true); }} />
+          <SaturationNote suppressed={st.flags} swing={satSwing} compact={st.grid} onShowPixels={() => { update({ flags: true }); if (window.innerWidth >= 1100) setDrawer(true); }} />
         )}
 
         <div className="dock" ref={dockRef}>
-          <SpectralRail det={st.det} colour={st.col} colourDets={colourDets}
+          <SpectralRail det={st.det} colour={st.col} colourDets={colourDets} grid={st.grid}
             onDet={(d) => update({ det: d, col: false, frame: undefined, a: undefined, b: undefined })}
-            onColour={(on) => update({ col: on, frame: undefined, a: undefined, b: undefined })}
+            onColour={(on) => update({ col: on, grid: false, frame: undefined, a: undefined, b: undefined })}
+            onGrid={(on) => update({ grid: on, col: false, frame: undefined, a: undefined, b: undefined })}
             coverage={ch0?.seq.coverage} />
           <div className="dock-row">
             {n > 0 && cmp === "none" && (
@@ -397,7 +463,8 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
               )}
               <div className="seg" role="radiogroup" aria-label="Compare">
                 {(["none", "blink", "side"] as const).map((m) => (
-                  <button key={m} role="radio" aria-checked={cmp === m} className={cmp === m ? "on" : ""} disabled={m !== "none" && n < 2}
+                  <button key={m} role="radio" aria-checked={cmp === m} className={cmp === m ? "on" : ""}
+                    disabled={(m !== "none" && n < 2) || (m === "side" && st.grid)}
                     onClick={() => update({ cmp: m })} title={m === "blink" ? "B" : undefined}>
                     {m === "none" ? "Step" : m === "blink" ? "Blink" : "Side by side"}
                   </button>
@@ -416,7 +483,9 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
       </section>
 
       {channels && ch0 && (
-        <DataPanel seq={ch0.seq} channels={channels.map((c, k) => ({ det: c.det, frame: stop ? c.seq.frames[stop.idx[k]] : undefined }))}
+        <DataPanel seq={ch0.seq} channels={st.grid
+            ? [...channels].sort((x, y) => x.det - y.det).map((c) => { const m = stop ? matchFrame(c.seq, stop.meta) : null; return { det: c.det, frame: m ? c.seq.frames[m.i] : undefined }; })
+            : channels.map((c, k) => ({ det: c.det, frame: stop ? c.seq.frames[stop.idx[k]] : undefined }))}
           colour={st.col} frame={stop?.meta} frameTag={cmp === "blink" ? `Showing ${phase ? "B" : "A"}` : cmp === "side" ? "A, on the left" : undefined}
           look={look} onLook={setLook} showFlags={st.flags} onFlags={(v) => update({ flags: v })}
           showMarker={st.marker} onMarker={(v) => update({ marker: v })}

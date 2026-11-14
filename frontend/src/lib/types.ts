@@ -64,7 +64,7 @@ export interface Sequence {
   request: { ra: number; dec: number; fov: number; det: number; view: View };
   target: TargetInfo | null;
   centre: { ra: number; dec: number; note: string };
-  grid: { nx: number; ny: number; pixel_scale_arcsec: number; crval: [number, number]; orientation: string };
+  grid: { nx: number; ny: number; pixel_scale_arcsec: number; crval: [number, number]; crpix?: [number, number]; orientation: string };
   detector: { id: number; band_um: [number, number]; label: string };
   stretch: { kind: string; a: number; lo: number; hi: number; percentiles: [number, number]; unit: string };
   frames: FrameMeta[];
@@ -101,6 +101,8 @@ export interface FeaturedCard {
   verified_on?: string;     // YYYY-MM-DD
   check?: string[];         // what a reviewer should see before approving
   review_note?: string;     // the measurements behind the card text
+  annotations?: Annotation[];
+  investigation?: Investigation;
   ra: number; dec: number;
   fov: number;
   det: number;
@@ -109,6 +111,17 @@ export interface FeaturedCard {
   compare?: "blink" | "side" | "none";
   sequences: Record<string, string>; // "3-survey" -> "barnard/d3-survey/"
 }
+
+/** A labelled circle on a fixed sky position (galaxies, nebulae: nothing that moves). */
+export interface Annotation { label: string; ra: number; dec: number; radius_arcsec?: number }
+
+/** A view a guided investigation step can switch to. Unset fields keep the current view. */
+export interface StepView {
+  det?: number; col?: boolean; grid?: boolean; cmp?: "none" | "blink" | "side";
+  frame?: number; a?: number; b?: number; flags?: boolean; px?: boolean; zoom?: number;
+}
+export interface InvestigationStep { title: string; text: string; view?: StepView }
+export interface Investigation { question: string; steps: InvestigationStep[]; takeaway: string; try_next?: string; try_next_q?: string }
 
 export interface FeaturedIndex { built_at: string; data_as_of?: string; cards: FeaturedCard[] }
 

@@ -12,10 +12,12 @@ interface Props {
   colourDets: [number, number, number];
   onDet: (d: number) => void;
   onColour: (on: boolean) => void;
+  grid: boolean;
+  onGrid: (on: boolean) => void;
   coverage?: Record<string, EpochSummary[]>;
 }
 
-export default function SpectralRail({ det, colour, colourDets, onDet, onColour, coverage }: Props) {
+export default function SpectralRail({ det, colour, colourDets, onDet, onColour, grid, onGrid, coverage }: Props) {
   return (
     <div className="rail">
       <div className="rail-band" role="radiogroup" aria-label="Wavelength band (detector)">
@@ -32,7 +34,7 @@ export default function SpectralRail({ det, colour, colourDets, onDet, onColour,
               className={`rail-seg ${!colour && d === det ? "on" : ""} ${inColour ? "in-colour" : ""}`}
               style={{ flexGrow: Math.max(b - a, 0.42), ["--c" as string]: RAIL_COLOURS[d - 1] }}
               onClick={() => onDet(d)}
-              title={`Detector ${d}: ${a.toFixed(2)} to ${b.toFixed(2)} µm${n !== undefined ? `, ${n} survey${n === 1 ? "" : "s"} here` : ""}`}
+              title={`Detector ${d}: ${a.toFixed(2)} to ${b.toFixed(2)} µm${n !== undefined ? `, ${n} survey${n === 1 ? "" : "s"} here` : ""}${grid ? ". In the grid, the timeline follows the selected detector" : ""}`}
             >
               <span className="rail-name">{DETECTORS[d].label}</span>
               <span className="rail-band-nums">{role ? <span className="rail-role">shown as {role}</span> : <>{a.toFixed(2)}–{b.toFixed(2)} µm</>}</span>
@@ -45,6 +47,11 @@ export default function SpectralRail({ det, colour, colourDets, onDet, onColour,
         title={`False colour: detector ${colourDets[0]} as blue, ${colourDets[1]} as green, ${colourDets[2]} as red`}>
         <span className="colour-swatch" aria-hidden="true" />
         Colour
+      </button>
+      <button className={`chip grid-chip ${grid ? "on" : ""}`} aria-pressed={grid} onClick={() => onGrid(!grid)}
+        title="All six detectors side by side (G)">
+        <span className="grid-icon" aria-hidden="true"><i /><i /><i /><i /><i /><i /></span>
+        Grid
       </button>
     </div>
   );

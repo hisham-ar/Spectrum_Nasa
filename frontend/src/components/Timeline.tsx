@@ -30,7 +30,7 @@ export default function Timeline({ frames, index, onIndex, playing, onPlaying, v
   const n = frames.length;
   const label = (f: FrameMeta) => view === "exposures" ? f.time_mid.slice(5, 16).replace("T", " ") : monthSpan(f.date_start, f.date_end);
   return (
-    <div className="timeline">
+    <div className="timeline" style={{ minWidth: Math.min(Math.max(frames.length, 3) * 130, 940) }}>
       <button className="play" onClick={() => onPlaying(!playing)} disabled={n < 2}
         aria-label={playing ? "Pause (Space)" : "Play (Space)"} title={n < 2 ? "Only one survey here so far" : "Space"}>
         {playing ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1" /><rect x="9.5" y="2" width="3.5" height="12" rx="1" /></svg>

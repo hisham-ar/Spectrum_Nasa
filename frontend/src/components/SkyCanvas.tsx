@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Marker, SmallBody } from "../lib/types";
 
 export interface ViewXform { zoom: number; cx: number; cy: number } // zoom 1 = fit; centre in image px
+export interface CanvasLabel { x: number; y: number; r: number; label: string }   // image px; r in px
 
 interface Props {
   image: ImageData | null;     // composed frame (real values, shared stretch)
@@ -9,6 +10,7 @@ interface Props {
   marker: Marker | null;
   showMarker: boolean;
   bodies?: SmallBody[];
+  labels?: CanvasLabel[];      // named objects, drawn as gold circles (hidden with the target marker)
   pixelScale: number;
   xform: ViewXform;
   onXform: (x: ViewXform) => void;
@@ -19,7 +21,7 @@ interface Props {
   anchor?: [number, number];   // where the view centre sits on screen (fractions)
 }
 
-export default function SkyCanvas({ image, smooth, marker, showMarker, bodies, pixelScale, xform, onXform,
+export default function SkyCanvas({ image, smooth, marker, showMarker, bodies, labels, pixelScale, xform, onXform,
   ariaLabel, fit = "contain", interactive = true, chrome = true, anchor = [0.5, 0.5] }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const cv = useRef<HTMLCanvasElement>(null);
@@ -72,6 +74,24 @@ export default function SkyCanvas({ image, smooth, marker, showMarker, bodies, p
       ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
     }
+    if (showMarker && labels?.length) {
+      ctx.font = "12.5px 'Instrument Sans Variable', system-ui, sans-serif";
+      for (const l of labels) {
+        const [sx, sy] = at(l.x, l.y);
+        const r = Math.max(12, l.r * scale);
+        ctx.strokeStyle = "rgba(242, 210, 75, 0.9)";
+        ctx.lineWidth = 1.25;
+        ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.stroke();
+        const w = ctx.measureText(l.label).width;
+        // label above the circle, kept inside the canvas
+        const lx = Math.min(Math.max(4, sx - w / 2 - 4), size.w - w - 12);
+        const ly = sy - r - 24 < 2 ? sy + r + 6 : sy - r - 24;
+        ctx.fillStyle = "rgba(0,0,0,0.72)";
+        ctx.fillRect(lx, ly, w + 8, 18);
+        ctx.fillStyle = "rgba(250, 230, 160, 0.98)";
+        ctx.fillText(l.label, lx + 4, ly + 13);
+      }
+    }
     if (bodies?.length) {
       ctx.font = "12px 'Instrument Sans Variable', system-ui, sans-serif";
       for (const bd of bodies) {
@@ -108,7 +128,7 @@ export default function SkyCanvas({ image, smooth, marker, showMarker, bodies, p
       ctx.fillText("N", cx0 - 4, cy0 - 22);
       ctx.fillText("E", cx0 - 30, cy0 + 4);
     }
-  }, [image, smooth, marker, showMarker, bodies, xform, size, scale, pixelScale, chrome, iw, ih, anchor[0], anchor[1]]);
+  }, [image, smooth, marker, showMarker, labels, bodies, xform, size, scale, pixelScale, chrome, iw, ih, anchor[0], anchor[1]]);
 
   const zoomAt = useCallback((factor: number, sx: number, sy: number) => {
     const z = Math.min(20, Math.max(0.5, xform.zoom * factor));

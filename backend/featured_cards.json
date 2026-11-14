@@ -155,7 +155,7 @@
       "category": "Richest timeline",
       "title": "The most-watched patch of sky",
       "blurb": "SPHEREx photographs this spot near the north ecliptic pole far more often than most of the sky: more than 1,500 exposures in a single six-month survey, compared with about 20 for Barnard's Star. Each frame here stacks 16 of them.",
-      "can_see": "Two named objects. The fuzzy oval just above the centre is NGC 6552, a spiral galaxy roughly 350 million light-years away. The bright spot near the right edge is the Cat's Eye Nebula, the glowing shell around a dying star in our own galaxy. Good for seeing what stays the same, which is most of the sky.",
+      "can_see": "Two named objects. The circled fuzzy oval just above the centre is NGC 6552, a spiral galaxy roughly 350 million light-years away. The circled bright spot near the right edge is the Cat's Eye Nebula, the glowing shell around a dying star in our own galaxy. Good for seeing what stays the same, which is most of the sky.",
       "check": [
         "A fuzzy oval about 3 arcminutes above the centre (NGC 6552).",
         "A bright spot near the right edge (Cat's Eye Nebula).",
@@ -176,7 +176,21 @@
       ],
       "verified": true,
       "verified_by": "Claude (checked for TheFam)",
-      "verified_on": "2026-11-14"
+      "verified_on": "2026-11-14",
+      "annotations": [
+        {
+          "label": "NGC 6552, spiral galaxy",
+          "ra": 270.030375,
+          "dec": 66.615083,
+          "radius_arcsec": 45
+        },
+        {
+          "label": "Cat's Eye Nebula",
+          "ra": 269.639116,
+          "dec": 66.63319,
+          "radius_arcsec": 35
+        }
+      ]
     },
     {
       "slug": "orion-ices",
@@ -184,7 +198,7 @@
       "q": "M42",
       "category": "Star-forming region",
       "title": "Inside the Orion Nebula",
-      "blurb": "A giant cloud of gas and dust about 1,300 light-years away, where new stars are forming. Its centre is far too bright for SPHEREx and is blank in every detector, but the glowing cloud around it, and the smaller nebula M43 above it, look different in each detector. Try the colour view.",
+      "blurb": "A giant cloud of gas and dust about 1,300 light-years away, where new stars are forming. Its centre is far too bright for SPHEREx and is blank in every detector, but the glowing cloud around it, and the smaller nebula M43 (circled) above it, look different in each detector. Try the colour view.",
       "can_see": "The glowing cloud and M43, clearly. Not the stars at its heart: the centre is blank in every detector, about 4% of the view in detector 1 and over 10% in detector 4.",
       "check": [
         "Detector 1: a glowing cloud around a blank centre.",
@@ -206,7 +220,15 @@
       ],
       "verified": true,
       "verified_by": "Claude (checked for TheFam)",
-      "verified_on": "2026-11-14"
+      "verified_on": "2026-11-14",
+      "annotations": [
+        {
+          "label": "M43",
+          "ra": 83.8792,
+          "dec": -5.2675,
+          "radius_arcsec": 75
+        }
+      ]
     }
   ]
 }

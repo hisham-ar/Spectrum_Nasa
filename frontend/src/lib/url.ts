@@ -17,10 +17,11 @@ export interface UrlState {
   marker: boolean;
   ast: boolean;        // known-asteroid overlay (Every-exposure view)
   col: boolean;        // false colour from three detectors
+  grid: boolean;       // all six detectors side by side
   px: boolean;         // true pixels (no display smoothing)
 }
 
-export const DEFAULTS: UrlState = { fov: 10, det: 3, view: "survey", cmp: "none", flags: false, marker: true, ast: false, col: false, px: false };
+export const DEFAULTS: UrlState = { fov: 10, det: 3, view: "survey", cmp: "none", flags: false, marker: true, ast: false, col: false, grid: false, px: false };
 
 function num(v: string | null): number | undefined {
   if (v === null || v.trim() === "") return undefined;
@@ -49,7 +50,8 @@ export function readUrl(search = window.location.search): UrlState {
     flags: p.get("flags") === "1",
     marker: p.get("marker") !== "0",
     ast: p.get("ast") === "1",
-    col: p.get("col") === "1",
+    col: p.get("col") === "1" && p.get("grid") !== "1",
+    grid: p.get("grid") === "1",
     px: p.get("px") === "1",
   };
 }
@@ -75,6 +77,7 @@ export function toSearch(s: UrlState): string {
   if (!s.marker) p.set("marker", "0");
   if (s.ast) p.set("ast", "1");
   if (s.col) p.set("col", "1");
+  if (s.grid) p.set("grid", "1");
   if (s.px) p.set("px", "1");
   return "?" + p.toString();
 }
