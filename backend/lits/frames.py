@@ -227,8 +227,16 @@ def build_sequence(req: Request, out_dir: Path | None = None, progress: Progress
         },
     }
     out_dir.mkdir(parents=True, exist_ok=True)
-    seq_path.write_text(json.dumps(seq, indent=1))
+    seq_path.write_text(json.dumps(seq, indent=1, default=_json_default))
     return seq
+
+
+def _json_default(o):
+    if isinstance(o, np.generic):
+        return o.item()
+    if isinstance(o, np.ndarray):
+        return o.tolist()
+    raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
 
 
 def _comparability(frames: list[dict], band: tuple[float, float]) -> dict:
@@ -240,7 +248,7 @@ def _comparability(frames: list[dict], band: tuple[float, float]) -> dict:
                      "different calibrations. Compare positions freely; treat brightness differences "
                      "between releases with caution.")
     mids = [np.mean(f["wavelength_range_um"]) for f in frames if f["wavelength_range_um"]]
-    differs = bool(mids) and (max(mids) - min(mids)) > 0.25 * (band[1] - band[0])
+    differs = bool(mids) and bool((max(mids) - min(mids)) > 0.25 * (band[1] - band[0]))
     if differs:
         notes.append("These frames mix noticeably different wavelengths within the detector band, "
                      "so they are not directly comparable for brightness.")

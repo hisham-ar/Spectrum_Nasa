@@ -316,7 +316,8 @@ def fetch_cutout(access_url: str, ra: float, dec: float, size_arcmin: float,
 
 
 def cloud_cache_path(e: Exposure, ra: float, dec: float, size_arcmin: float) -> Path:
-    return config.CACHE_DIR / "cutouts" / f"s3_{_key(e.access_url.split('?')[0], round(ra, 7), round(dec, 7), round(size_arcmin, 3))}.fits"
+    # "v2": files written before FLAGS decompression was handled are ignored
+    return config.CACHE_DIR / "cutouts" / f"s3v2_{_key('v2', e.access_url.split('?')[0], round(ra, 7), round(dec, 7), round(size_arcmin, 3))}.fits"
 
 
 def is_cached_exposure(e: Exposure, ra: float, dec: float, size_arcmin: float) -> bool:

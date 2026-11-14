@@ -11,6 +11,7 @@ extension names and a shifted WCS, so the rest of the pipeline is unchanged.
 """
 from __future__ import annotations
 
+import io
 import math
 import time
 from pathlib import Path
@@ -125,6 +126,19 @@ def _rows(rr: _Ranged, h: fits.Header, data_off: int, y0: int, y1: int, x0: int,
     return out * bscale + bzero if (bscale != 1 or bzero != 0) else out
 
 
+def _is_compressed(h: fits.Header) -> bool:
+    return str(h.get("XTENSION", "")).strip() == "BINTABLE" and bool(h.get("ZIMAGE", False))
+
+
+def _decompressed(rr: _Ranged, hdr_off: int, data_off: int, h: fits.Header) -> tuple[np.ndarray, fits.Header]:
+    """Tile-compressed HDU (the S3 copy stores FLAGS this way): fetch the whole
+    compressed HDU and let astropy decompress it."""
+    raw = rr.get(hdr_off, data_off - hdr_off) + rr.get(data_off, _data_bytes(h))
+    buf = io.BytesIO(fits.PrimaryHDU().header.tostring().encode("ascii") + raw)
+    with fits.open(buf) as hl:
+        return np.array(hl[1].data), hl[1].header.copy()
+
+
 def _shift_wcs(h: fits.Header, x0: int, y0: int) -> fits.Header:
     """Same sky, cut-out pixel origin: shift CRPIX of every WCS (incl. alt
     keys such as 'W' and 'A'). SIP and -TAB terms are relative to CRPIX."""
@@ -148,7 +162,7 @@ def fetch(access_url: str, ra: float, dec: float, size_arcmin: float, path: Path
     rr = _Ranged(s3_url(access_url, cloud_key), client)
     try:
         # walk the HDUs: headers only, skipping data we do not need (e.g. the PSF)
-        hdus: dict[str, tuple[fits.Header, int]] = {}
+        hdus: dict[str, tuple[fits.Header, int, int]] = {}   # name -> (header, header start, data start)
         rr.get(0, BLOCK * 20)                       # primary + IMAGE headers in one request
         primary, hlen = _read_header(rr, 0)
         off = hlen + _data_bytes(primary)
@@ -158,7 +172,7 @@ def fetch(access_url: str, ra: float, dec: float, size_arcmin: float, path: Path
             except EOFError:
                 break
             name = str(h.get("EXTNAME", "")).strip().upper()
-            hdus[name] = (h, off + hlen)
+            hdus[name] = (h, off, off + hlen)
             off += hlen + _data_bytes(h)
             if all(n in hdus for n in WANT) and "WCS-WAVE" in hdus:
                 break
@@ -167,7 +181,8 @@ def fetch(access_url: str, ra: float, dec: float, size_arcmin: float, path: Path
             raise RuntimeError(f"S3 file has no {missing} extension(s): {sorted(hdus)}")
 
         img_h = hdus["IMAGE"][0]
-        nx, ny = img_h["NAXIS1"], img_h["NAXIS2"]
+        nx = img_h.get("ZNAXIS1", img_h["NAXIS1"]) if _is_compressed(img_h) else img_h["NAXIS1"]
+        ny = img_h.get("ZNAXIS2", img_h["NAXIS2"]) if _is_compressed(img_h) else img_h["NAXIS2"]
         w = WCS(img_h, naxis=2)
         r = size_arcmin / 2 / 60
         ang = np.linspace(0, 2 * math.pi, 48, endpoint=False)
@@ -184,11 +199,18 @@ def fetch(access_url: str, ra: float, dec: float, size_arcmin: float, path: Path
 
         out = [fits.PrimaryHDU(header=primary)]
         for name in WANT:
-            h, doff = hdus[name]
-            a = _rows(rr, h, doff, y0, y1, x0, x1)
-            out.append(fits.ImageHDU(a, header=_shift_wcs(h, x0, y0), name=name))
+            h, hoff, doff = hdus[name]
+            if _is_compressed(h):
+                full, h = _decompressed(rr, hoff, doff, h)
+                a = full[y0:y1 + 1, x0:x1 + 1]
+            else:
+                a = _rows(rr, h, doff, y0, y1, x0, x1)
+            hh = _shift_wcs(h, x0, y0)
+            for k in ("XTENSION", "PCOUNT", "GCOUNT", "EXTNAME"):
+                hh.remove(k, ignore_missing=True)
+            out.append(fits.ImageHDU(np.ascontiguousarray(a), header=hh, name=name))
         if "WCS-WAVE" in hdus:
-            h, doff = hdus["WCS-WAVE"]
+            h, _, doff = hdus["WCS-WAVE"]
             raw = rr.get(doff, _data_bytes(h))
             tab = fits.BinTableHDU.fromstring(h.tostring().encode("ascii") + raw)
             tab.name = "WCS-WAVE"

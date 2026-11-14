@@ -51,8 +51,9 @@ def make_full(path: Path, n=600):
             x = h[name].copy()
             x.header["CRPIX1W"] = 10.0; x.header["CRPIX2W"] = 20.0
             hdus.append(x)
-    flags = hdus[2].data.astype(np.uint32)
-    hdus[2] = fits.ImageHDU(flags, header=hdus[2].header, name="FLAGS")   # BZERO=2**31 convention
+    # the S3 copy stores FLAGS tile-compressed (a BINTABLE with ZIMAGE=T)
+    hdus[2] = fits.CompImageHDU(hdus[2].data.astype(np.int32), header=hdus[2].header, name="FLAGS",
+                                compression_type="RICE_1")
     hdus.append(fits.ImageHDU(np.random.default_rng(0).normal(size=(121, 40, 40)).astype(np.float32), name="PSF"))
     col = fits.Column(name="VALUES", format="5E", array=np.arange(10, dtype=np.float32).reshape(2, 5))
     hdus.append(fits.BinTableHDU.from_columns([col], name="WCS-WAVE"))
@@ -87,7 +88,8 @@ def test_cloud_cutout_matches_full_file(tmp_path, server, monkeypatch):
         assert [x.name for x in h] == ["PRIMARY", "IMAGE", "FLAGS", "VARIANCE", "ZODI", "WCS-WAVE"]
         x0, y0, _, _ = map(int, h["IMAGE"].header["LITSBOX"].split(","))
         assert h["IMAGE"].header["CRPIX1W"] == 10.0 - x0 and h["IMAGE"].header["CRPIX2W"] == 20.0 - y0
-        assert h["FLAGS"].data.dtype.kind == "u"
+        assert h["FLAGS"].data.shape == h["IMAGE"].data.shape
+        assert h["FLAGS"].data.dtype.kind == "i"
         assert h["IMAGE"].data.shape[0] < 600 and h["IMAGE"].data.shape[1] < 600
     a = coadd.load_exposure(full, tp.RA0, tp.DEC0)
     b = coadd.load_exposure(mini, tp.RA0, tp.DEC0)
