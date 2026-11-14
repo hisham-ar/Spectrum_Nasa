@@ -7,6 +7,11 @@ patch, one survey at a time, to spot motion.
 No AI or machine learning runs in the website. Every frame is real SPHEREx data,
 labelled with its true dates, detector, wavelengths and data release.
 
+## Hosting
+
+The whole site runs as one container built from the `Dockerfile`. See [DEPLOY.md](DEPLOY.md)
+for the Google Cloud Run setup (deploys automatically from this repo).
+
 ## Quick start (Windows, VS Code terminal / PowerShell)
 
 Needs Python 3.10 or newer.
