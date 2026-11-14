@@ -151,6 +151,20 @@ def _f(el: ET.Element | None, tag: str) -> float | None:
         return None
 
 
+_ID_PREFIXES = ("NAME ", "V* ", "* ", "** ", "EM* ")
+
+
+def clean_name(name: str) -> str:
+    """SIMBAD main identifiers carry catalogue prefixes ("NAME Barnard's star",
+    "V* RW Aur"); show the plain name."""
+    n = " ".join(name.split())
+    for p in _ID_PREFIXES:
+        if n.startswith(p):
+            n = n[len(p):]
+            break
+    return n[:1].upper() + n[1:] if n else n
+
+
 def parse_sesame(xml_text: str, query: str) -> Target | None:
     root = ET.fromstring(xml_text)
     for res in root.iter("Resolver"):
@@ -165,7 +179,7 @@ def parse_sesame(xml_text: str, query: str) -> Target | None:
         otype = otype_el.text.strip() if otype_el is not None and otype_el.text else None
         t = Target(
             kind="name", query=query, ra=ra, dec=dec,
-            name=(oname_el.text.strip() if oname_el is not None and oname_el.text else query),
+            name=clean_name(oname_el.text.strip() if oname_el is not None and oname_el.text else query),
             otype=otype, label=otype_label(otype), epoch=2000.0,
             pmra=_f(pm, "pmRA"), pmdec=_f(pm, "pmDE"),
             plx=_f(plx, "v"), rv=_f(vel, "v"),

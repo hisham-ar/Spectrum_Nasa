@@ -65,7 +65,7 @@ export default function App() {
         {page === "about" && <About />}
       </div>
       <footer className="footer">
-        <span>SPHEREx data as of {dataAsOf ?? builtAt ?? "the latest IRSA search"} · NASA/IPAC Infrared Science Archive</span>
+        <span>Latest SPHEREx exposure shown: {dataAsOf ?? builtAt ?? "see each frame"} · NASA/IPAC Infrared Science Archive</span>
         <span>No AI in this site: every frame is real data, every step is conventional processing.</span>
       </footer>
     </div>

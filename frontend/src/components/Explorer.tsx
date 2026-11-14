@@ -84,10 +84,12 @@ export default function Explorer({ featured, featuredReady, onDataDate }: Props)
           s = await fetchSequence(loc, st.fov, st.det, st.view, setBuild, ac.signal);
         }
         if (ac.signal.aborted) return;
+        if (card && s.target) s.target = { ...s.target, name: card.name };
         setSeq(s);
         setBuild(null);
-        const last = s.provenance.queried_at ?? s.provenance.built_at;
-        onDataDate(last ? String(last).slice(0, 10) : null);
+        const latest = s.frames.reduce((m, f) => (f.date_end > m ? f.date_end : m), "");
+        const checked = String(s.provenance.queried_at ?? s.provenance.built_at ?? "").slice(0, 10);
+        onDataDate(latest ? `${latest}${checked ? ` (archive checked ${checked})` : ""}` : null);
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
         setErr((e as Error).message);

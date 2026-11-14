@@ -175,6 +175,9 @@ SESAME_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
 def test_sesame_and_proper_motion():
     t = parse_sesame(SESAME_SAMPLE, "Barnard")
     assert t is not None and t.moves and t.label == "Star"
+    assert t.name == "Barnard's star"
+    from lits.resolve import clean_name
+    assert clean_name("NAME Barnard's star") == "Barnard's star" and clean_name("V* RW Aur") == "RW Aur"
     ra, dec = t.position_at(Time("2026-01-01"))
     # ~26 years of ~10.4"/yr, mostly north: ~4.5' north of J2000
     assert 4.3 < (dec - t.dec) * 60 < 4.7

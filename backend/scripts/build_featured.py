@@ -83,6 +83,8 @@ def main() -> int:
             print(f"  ! {card['slug']}: could not resolve '{card.get('q')}': {e}")
             log(f"resolve failed {card['slug']}: {e}")
             continue
+        if tgt is not None:
+            tgt.name = card["name"]          # show the card's display name, not SIMBAD's identifier
         ra = tgt.ra if tgt else card["ra"]
         dec = tgt.dec if tgt else card["dec"]
         cards.append((card, tgt, ra, dec))
