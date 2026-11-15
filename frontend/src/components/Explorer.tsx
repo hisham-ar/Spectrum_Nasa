@@ -76,7 +76,8 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   const [linked, setLinked] = useState(true);                       // grid: zoom/pan all panels together
   const [gridLoading, setGridLoading] = useState<number | null>(null); // grid: detector being fetched
   const [gridFailed, setGridFailed] = useState<Record<number, string>>({});
-  const [gridSlow, setGridSlow] = useState(false);   // grid still loading after a few seconds: offer the game
+  const [gridSlow, setGridSlow] = useState(false);
+  const [retryN, setRetryN] = useState(0);            // "Try again" after a failed load   // grid still loading after a few seconds: offer the game
   const [loadedKey, setLoadedKey] = useState<string | null>(null);            // which view the channels belong to
   const [zoomReq, setZoomReq] = useState<{ zoom: number; n: number } | null>(null);  // investigation step zoom
   const [astRes, setAstRes] = useState<Record<number, AsteroidResult | "loading" | string>>({});
@@ -191,7 +192,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     })();
     return () => ac.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locKey]);
+  }, [locKey, retryN]);
 
   // --- stops: one per survey (single) or per survey common to all colour channels ------
   const stops: Stop[] = useMemo(() => {
@@ -490,7 +491,10 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
             {err ? (
               <>
                 <p><strong>This view could not be loaded.</strong> {err}</p>
-                <button className="chip" onClick={() => onNavigate("/?target=barnard&det=3&fov=10")}>Open Barnard's Star instead</button>
+                <div className="status-actions">
+                  <button className="chip on" onClick={() => setRetryN((r) => r + 1)}>Try again</button>
+                  <button className="chip" onClick={() => onNavigate("/?target=barnard&det=3&fov=10")}>Open Barnard's Star instead</button>
+                </div>
               </>
             ) : !channels ? (
               <>

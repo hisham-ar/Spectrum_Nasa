@@ -95,6 +95,7 @@ select { background: var(--chrome-2); color: var(--text); border: 1px solid var(
 .status { position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%); width: min(520px, 88%); background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; text-align: center; }
 .status p { margin: 6px 0; }
 .status.error { border-color: rgba(242, 210, 75, 0.45); }
+.status-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
 .meter { height: 4px; margin: 12px 0 6px; background: var(--line); border-radius: 2px; overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--spectrum); transition: width 0.4s ease; }
 

@@ -100,6 +100,38 @@ def _col(table, *names):
     return None
 
 
+class ArchiveUnavailable(RuntimeError):
+    """IRSA didn't answer. Its message is written for visitors."""
+
+
+RETRY_WAITS = (2.0, 5.0)   # seconds before the 2nd and 3rd attempt
+
+
+def _retryable(e: Exception) -> bool:
+    if isinstance(e, httpx.HTTPStatusError):
+        return e.response.status_code >= 500 or e.response.status_code == 429
+    return isinstance(e, httpx.TransportError)          # timeouts, dropped connections
+
+
+def query_collection_retry(collection: str, ra: float, dec: float) -> list[Exposure]:
+    """IRSA sometimes answers '502 Proxy Error' for a moment; ask again before giving up."""
+    for attempt in range(len(RETRY_WAITS) + 1):
+        try:
+            return query_collection(collection, ra, dec)
+        except Exception as e:  # noqa: BLE001
+            if attempt == len(RETRY_WAITS) or not _retryable(e):
+                raise
+            time.sleep(RETRY_WAITS[attempt])
+    raise AssertionError("unreachable")
+
+
+def _unavailable_text(errors: dict[str, Exception]) -> str:
+    codes = sorted({e.response.status_code for e in errors.values() if isinstance(e, httpx.HTTPStatusError)})
+    why = f"it answered with error {', '.join(map(str, codes))}" if codes else "it didn't respond in time"
+    return (f"NASA's SPHEREx archive (IRSA) isn't answering right now: {why}. This is on IRSA's side "
+            "and usually clears within a few minutes, so please try again shortly.")
+
+
 def query_collection(collection: str, ra: float, dec: float, radius_deg: float = 1 / 3600) -> list[Exposure]:
     params = {"COLLECTION": collection, "POS": f"CIRCLE {ra:.7f} {dec:.7f} {radius_deg:.7f}"}
     r = client().get(config.SIA2_URL, params=params)
@@ -164,9 +196,10 @@ def find_exposures(ra: float, dec: float, use_cache: bool = True) -> tuple[list[
     found: list[Exposure] = []
     per_collection: dict[str, int] = {}
     errors: dict[str, str] = {}
+    failures: dict[str, Exception] = {}
     # Ask IRSA about every collection at once (one after another took 7-13 s).
     with ThreadPoolExecutor(max_workers=len(config.COLLECTIONS)) as pool:
-        futures = {coll: pool.submit(query_collection, coll, ra, dec) for coll in config.COLLECTIONS}
+        futures = {coll: pool.submit(query_collection_retry, coll, ra, dec) for coll in config.COLLECTIONS}
     for coll, fut in futures.items():               # keep the collection order stable
         try:
             rows = fut.result()
@@ -174,8 +207,9 @@ def find_exposures(ra: float, dec: float, use_cache: bool = True) -> tuple[list[
             found.extend(rows)
         except Exception as e:  # noqa: BLE001 - one dead collection must not kill the search
             errors[coll] = f"{type(e).__name__}: {e}"
-    if errors and not found:
-        raise RuntimeError(f"IRSA search failed: {errors}")
+            failures[coll] = e
+    if errors and len(errors) == len(config.COLLECTIONS):
+        raise ArchiveUnavailable(_unavailable_text(failures))
 
     # De-duplicate the same exposure appearing in two releases.
     rank = {r: i for i, r in enumerate(config.RELEASE_PREFERENCE)}
@@ -191,8 +225,9 @@ def find_exposures(ra: float, dec: float, use_cache: bool = True) -> tuple[list[
         "per_collection": per_collection, "errors": errors,
         "collections": config.COLLECTIONS,
     }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"exposures": [asdict(e) for e in exposures], "meta": meta}))
+    if not errors:   # an incomplete answer is used once but never cached, so the next search asks again
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"exposures": [asdict(e) for e in exposures], "meta": meta}))
     return exposures, meta
 
 

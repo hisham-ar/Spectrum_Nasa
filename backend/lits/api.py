@@ -117,7 +117,7 @@ def api_coverage(q: str | None = None, ra: float | None = None, dec: float | Non
     try:
         exps, meta = archive.find_exposures(ra0, dec0)
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"IRSA search failed: {e}") from e
+        raise HTTPException(502, str(e) if isinstance(e, archive.ArchiveUnavailable) else f"IRSA search failed: {e}") from e
     _last_query.update({"queried_at": meta.get("queried_at")})
     return {"ra": ra0, "dec": dec0, "coverage": archive.coverage(exps), "meta": meta,
             "latest_date": Time(max(e.t_max for e in exps), format="mjd").isot[:10] if exps else None}
@@ -135,7 +135,8 @@ def _run_job(jk: str, req: frames.Request):
         seq = frames.build_sequence(req, progress=progress, planned=planned)
         job.update(status="ready", stage="ready", key=seq["key"])
     except Exception as e:  # noqa: BLE001
-        job.update(status="error", error=f"{type(e).__name__}: {e}", trace=traceback.format_exc()[-2000:])
+        msg = str(e) if isinstance(e, archive.ArchiveUnavailable) else f"{type(e).__name__}: {e}"
+        job.update(status="error", error=msg, trace=traceback.format_exc()[-2000:])
     finally:
         try:
             with _lock:
@@ -159,7 +160,7 @@ def api_sequence(q: str | None = None, ra: float | None = None, dec: float | Non
     jk = hashlib.sha1(f"{q}|{ra0:.6f}|{dec0:.6f}|{req.fov}|{det}|{view}".encode()).hexdigest()[:16]
     with _lock:
         job = _jobs.get(jk)
-        if job and job["status"] == "error" and time.time() - job["started"] > 30:
+        if job and job["status"] == "error" and time.time() - job["started"] > 5:
             job = None  # allow a retry
         if job and job["status"] == "ready" and not (config.CACHE_DIR / "seq" / job["key"] / "sequence.json").exists():
             job = None  # its files were cleared to save space: build it again
