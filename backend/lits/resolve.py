@@ -183,13 +183,27 @@ def clean_name(name: str) -> str:
     return n[:1].upper() + n[1:] if n else n
 
 
+_GREEK_ABBR = {"alf", "bet", "gam", "del", "eps", "zet", "eta", "tet", "iot", "kap", "lam", "mu",
+               "nu", "xi", "omi", "pi", "rho", "sig", "tau", "ups", "phi", "chi", "psi", "ome"}
+
+
 def display_name(query: str, main_id: str) -> str:
-    """A visitor who types a star's proper name ("hamal") should see it, with the
-    catalogue name alongside: "Hamal (α Ari)"."""
+    """A visitor who types a name ("hamal", "Kapteyn's Star") should see it, with the
+    catalogue name alongside: "Hamal (α Ari)", "Kapteyn's Star (HD 33793)".
+    Catalogue-style queries ("eps Ind B", "rw aur", "HD 33793") just get the clean catalogue name."""
     plain = clean_name(main_id)
     q = " ".join(query.split())
-    if re.fullmatch(r"[A-Za-z][A-Za-z'\-]{2,}", q) and q.lower() not in plain.lower():
+    if not q or q.lower() in plain.lower() or len(q) > 40:
+        return plain
+    if re.fullmatch(r"[A-Za-z][A-Za-z'\-]{2,}", q):                      # one word: "hamal"
         return f"{q[:1].upper()}{q[1:].lower()} ({plain})"
+    words = q.split(" ")
+    if (len(words) <= 4
+            and all(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9'\-+.]*", w) for w in words)
+            and any(re.search(r"[A-Za-z]{4,}", w) for w in words)
+            and not any(w.lower() in _GREEK_ABBR for w in words)):
+        shown = q if any(c.isupper() for c in q) else " ".join(w[:1].upper() + w[1:] for w in words)
+        return f"{shown} ({plain})"
     return plain
 
 

@@ -242,6 +242,12 @@ def test_display_names():
     assert display_name("eps Ind B", "* eps Ind B") == "ε Ind B"
     assert display_name("rw aur", "V* RW Aur") == "RW Aur"
     assert display_name("x", "* tet01 Ori C") == "θ¹ Ori C"
+    assert display_name("Kapteyn's Star", "HD  33793") == "Kapteyn's Star (HD 33793)"
+    assert display_name("kapteyn's star", "HD  33793") == "Kapteyn's Star (HD 33793)"
+    assert display_name("Wolf 359", "* CN Leo") == "Wolf 359 (CN Leo)"
+    assert display_name("HD 33793", "HD  33793") == "HD 33793"
+    assert display_name("eps indi b", "* eps Ind B") == "ε Ind B"
+    assert display_name("Luhman 16", "NAME Luhman 16") == "Luhman 16"
 
 
 def test_cache_headers():
