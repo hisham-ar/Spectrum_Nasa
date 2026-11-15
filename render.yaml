@@ -24,8 +24,8 @@ services:
         value: "1"
       - key: LITS_MAX_PARALLEL
         value: "4"
-      - key: LITS_MAX_ACTIVE_JOBS
-        value: "6"
+      - key: LITS_MAX_ACTIVE_JOBS     # waiting searches cost nothing until they run; turn away only real floods
+        value: "12"
 
   - type: web
     name: spectrum-nasa
