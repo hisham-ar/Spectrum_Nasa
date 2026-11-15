@@ -104,7 +104,7 @@ class ArchiveUnavailable(RuntimeError):
     """IRSA didn't answer. Its message is written for visitors."""
 
 
-RETRY_WAITS = (2.0, 5.0)   # seconds before the 2nd and 3rd attempt
+RETRY_WAITS = (2.0, 5.0, 10.0)   # seconds before the 2nd, 3rd and 4th attempt
 
 
 def _retryable(e: Exception) -> bool:
@@ -208,7 +208,10 @@ def find_exposures(ra: float, dec: float, use_cache: bool = True) -> tuple[list[
         except Exception as e:  # noqa: BLE001 - one dead collection must not kill the search
             errors[coll] = f"{type(e).__name__}: {e}"
             failures[coll] = e
-    if errors and len(errors) == len(config.COLLECTIONS):
+    # A half answer must not look like a whole one: if a main collection (DR1, QR3) failed, or
+    # nothing came back while something failed, "no data" would be a false statement.
+    main_failed = [c for c in failures if not c.endswith("_deep")]
+    if main_failed or (failures and not found):
         raise ArchiveUnavailable(_unavailable_text(failures))
 
     # De-duplicate the same exposure appearing in two releases.

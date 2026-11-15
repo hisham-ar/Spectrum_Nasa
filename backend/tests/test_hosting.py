@@ -89,15 +89,35 @@ def test_irsa_down_gives_a_readable_message(tmp_path, monkeypatch):
     assert "502" in msg and "IRSA" in msg and "{" not in msg
 
 
-def test_incomplete_answer_is_not_cached(tmp_path, monkeypatch):
+def test_main_collection_failure_is_not_shown_as_no_data(tmp_path, monkeypatch):
+    """RR Lyrae: QR3 answered, DR1 failed. Detectors only DR1 covers must not read 'no data'."""
+    import pytest
     from lits import archive, config
     monkeypatch.setattr(config, "CACHE_DIR", tmp_path)
-    monkeypatch.setattr(archive, "RETRY_WAITS", (0.0, 0.0))
-    def half(coll, ra, dec):
-        if coll == config.COLLECTIONS[0]:
-            raise _http_error(503)
+    monkeypatch.setattr(archive, "RETRY_WAITS", (0.0,))
+    def dr1_down(coll, ra, dec):
+        if coll == "spherex_dr1":
+            raise _http_error(502)
         return []
-    monkeypatch.setattr(archive, "query_collection", half)
+    monkeypatch.setattr(archive, "query_collection", dr1_down)
+    with pytest.raises(archive.ArchiveUnavailable):
+        archive.find_exposures(10.0, 20.0, use_cache=False)
+
+
+def test_deep_collection_failure_is_tolerated_but_not_cached(tmp_path, monkeypatch):
+    from lits import archive, config
+    monkeypatch.setattr(config, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(archive, "RETRY_WAITS", (0.0,))
+    monkeypatch.setattr(archive, "_exposure_key", lambda e: "k")
+
+    class E:  # stand-in with only what de-duplication and sorting read
+        detector, release, t_min = 1, "QR3", 0.0
+
+    def deep_down(coll, ra, dec):
+        if coll.endswith("_deep"):
+            raise _http_error(503)
+        return [E()] if coll == "spherex_qr3" else []
+    monkeypatch.setattr(archive, "query_collection", deep_down)
     exps, meta = archive.find_exposures(10.0, 20.0, use_cache=False)
-    assert config.COLLECTIONS[0] in meta["errors"]
+    assert len(exps) == 1 and any(c.endswith("_deep") for c in meta["errors"])
     assert not (tmp_path / "queries").exists() or not any((tmp_path / "queries").iterdir())
