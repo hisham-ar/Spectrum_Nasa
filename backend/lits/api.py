@@ -46,6 +46,7 @@ _pool = ThreadPoolExecutor(max_workers=int(os.environ.get("LITS_BUILD_WORKERS", 
 # A public server must not queue unlimited work: past this many unfinished searches,
 # new ones are turned away with a clear message (Featured still works, it needs no search).
 MAX_ACTIVE_JOBS = int(os.environ.get("LITS_MAX_ACTIVE_JOBS", "8"))
+ERROR_SHOWN_S = 60   # a failed build stays visible to pollers this long (unless a page asks to retry)
 _last_query: dict = {}
 
 
@@ -136,7 +137,7 @@ def _run_job(jk: str, req: frames.Request):
         job.update(status="ready", stage="ready", key=seq["key"])
     except Exception as e:  # noqa: BLE001
         msg = str(e) if isinstance(e, archive.ArchiveUnavailable) else f"{type(e).__name__}: {e}"
-        job.update(status="error", error=msg, trace=traceback.format_exc()[-2000:])
+        job.update(status="error", error=msg, trace=traceback.format_exc()[-2000:], finished=time.time())
     finally:
         try:
             with _lock:
@@ -150,7 +151,10 @@ def _run_job(jk: str, req: frames.Request):
 
 @app.get("/api/sequence")
 def api_sequence(q: str | None = None, ra: float | None = None, dec: float | None = None,
-                 fov: float = 10.0, det: int = 3, view: str = "survey"):
+                 fov: float = 10.0, det: int = 3, view: str = "survey", retry: int = 0):
+    """Start or poll a build. Pages send retry=1 on their first request only, so a failed
+    build is retried when someone opens the view again, while the page that is polling it
+    gets to see the error instead of a fresh build starting behind its back."""
     ra0, dec0, t = _target_from(q, ra, dec)
     req = frames.Request(ra=ra0, dec=dec0, fov=fov, det=det, view=view, target=t)
     try:
@@ -160,8 +164,9 @@ def api_sequence(q: str | None = None, ra: float | None = None, dec: float | Non
     jk = hashlib.sha1(f"{q}|{ra0:.6f}|{dec0:.6f}|{req.fov}|{det}|{view}".encode()).hexdigest()[:16]
     with _lock:
         job = _jobs.get(jk)
-        if job and job["status"] == "error" and time.time() - job["started"] > 5:
-            job = None  # allow a retry
+        if job and job["status"] == "error" and (
+                retry or time.time() - job.get("finished", job["started"]) > ERROR_SHOWN_S):
+            job = None  # a new request (or an old error): try again
         if job and job["status"] == "ready" and not (config.CACHE_DIR / "seq" / job["key"] / "sequence.json").exists():
             job = None  # its files were cleared to save space: build it again
         if job is None:

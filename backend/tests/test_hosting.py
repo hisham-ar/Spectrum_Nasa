@@ -143,3 +143,23 @@ def test_irsa_search_gives_up_within_deadline(tmp_path, monkeypatch):
         archive.find_exposures(10.0, 20.0, use_cache=False)
     assert time.time() - t0 < 1.5
     assert "didn't respond in time" in str(ei.value)
+
+
+def test_failed_build_is_shown_to_the_page_polling_it(monkeypatch):
+    """Polls must see the error; only a fresh request (retry=1) starts again."""
+    from lits import api
+    started = time.time() - 120          # the build ran a long time before failing
+    def jobs():
+        return {"status": "error", "error": "IRSA isn't answering", "started": started, "finished": time.time()}
+    monkeypatch.setattr(api, "_pool", type("P", (), {"submit": staticmethod(lambda *a, **k: None)})())
+    c = TestClient(api.app)
+    params = {"ra": 10.0, "dec": 20.0}
+    # find this request's job key by letting the endpoint create it once
+    monkeypatch.setattr(api, "_jobs", {})
+    c.get("/api/sequence", params=params)
+    (jk,) = api._jobs.keys()
+    api._jobs[jk] = jobs()
+    r = c.get("/api/sequence", params=params)
+    assert r.status_code == 502 and "IRSA" in r.json()["error"]
+    r = c.get("/api/sequence", params={**params, "retry": 1})
+    assert r.status_code == 202 and r.json()["status"] == "building"

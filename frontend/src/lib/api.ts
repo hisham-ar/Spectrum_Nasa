@@ -48,8 +48,10 @@ export async function fetchSequence(
   onProgress: (s: BuildStatus) => void, signal: AbortSignal,
 ): Promise<Sequence> {
   const url = `${API}/api/sequence?${locParams(l)}&fov=${fov}&det=${det}&view=${view}`;
-  for (;;) {
-    const { status, body } = await getJson<Sequence | BuildStatus>(url, signal);
+  // The first request may retry an earlier failure; the polls after it must not, or a failed
+  // build would silently restart and the visitor would never see why.
+  for (let first = true; ; first = false) {
+    const { status, body } = await getJson<Sequence | BuildStatus>(first ? `${url}&retry=1` : url, signal);
     if (status === 200 && (body as Sequence).frames) {
       const seq = body as Sequence;
       seq.base = `${API}/api/seq/${seq.key}/`;
