@@ -74,7 +74,7 @@ export default function App() {
       <div id="content">
         {page === "explore" && <Explorer key={navKey} featured={featured} featuredReady={featuredReady} onDataDate={setDataAsOf} onNavigate={go} />}
         {page === "featured" && <Featured cards={featured} onOpen={onPick} />}
-        {page === "about" && <About />}
+        {page === "about" && <About onNavigate={go} />}
         {page === "guide" && <Guide featured={featured} featuredReady={featuredReady} onNavigate={go} />}
       </div>
       <footer className="footer">

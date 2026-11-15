@@ -76,6 +76,7 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   const [linked, setLinked] = useState(true);                       // grid: zoom/pan all panels together
   const [gridLoading, setGridLoading] = useState<number | null>(null); // grid: detector being fetched
   const [gridFailed, setGridFailed] = useState<Record<number, string>>({});
+  const [gridSlow, setGridSlow] = useState(false);   // grid still loading after a few seconds: offer the game
   const [loadedKey, setLoadedKey] = useState<string | null>(null);            // which view the channels belong to
   const [zoomReq, setZoomReq] = useState<{ zoom: number; n: number } | null>(null);  // investigation step zoom
   const [astRes, setAstRes] = useState<Record<number, AsteroidResult | "loading" | string>>({});
@@ -214,6 +215,12 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
   // Only a live search needs the server; Featured frames are plain files on the website.
   const waking = server === "waking" && !build;
   const waitText = build ?? (waking ? "Starting the search server" : "Searching the SPHEREx archive");
+  const gridDone = (channels?.length ?? 0) + Object.keys(gridFailed).length;   // detectors finished (loaded or failed)
+  const gameReady = st.grid ? !!channels && gridLoading === null : !!channels;
+  const gameReadyText = st.grid
+    ? (gridDone - Object.keys(gridFailed).length === 6 ? "All six detectors are ready."
+      : `Loading finished: ${gridDone - Object.keys(gridFailed).length} of 6 detectors have images.`)
+    : n > 0 ? "Your images are ready." : "Loading finished, but SPHEREx has no images here.";
   const clamp = (i: number | undefined, d: number) => (i === undefined || !Number.isFinite(i) ? d : Math.max(0, Math.min(n - 1, Math.round(i))));
   const frameIdx = clamp(st.frame, 0);
   const a = clamp(st.a, 0);
@@ -323,6 +330,15 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
     const t = setTimeout(() => setSlowLoad(true), 2500);
     return () => clearTimeout(t);
   }, [channels, err]);
+
+  // In the grid the first detector arrives long before the sixth, so keep the game on offer
+  // for the whole load (Featured grids load at once and never show it).
+  const gridBusy = st.grid && gridLoading !== null;
+  useEffect(() => {
+    if (!gridBusy) { setGridSlow(false); return; }
+    const t = setTimeout(() => setGridSlow(true), 2500);
+    return () => clearTimeout(t);
+  }, [gridBusy]);
 
   // --- keyboard ----------------------------------------------------------------------------
   useEffect(() => {
@@ -447,15 +463,26 @@ export default function Explorer({ featured, featuredReady, onDataDate, onNaviga
 
         {gameOpen && !err && (
           <div className="status game" role="region" aria-label="Rocket game">
-            {!channels && (
+            {gridBusy ? (
+              <div className="game-load">
+                <span>Detector {gridLoading} ({Math.min(gridDone + 1, 6)} of 6): {waitText}</span>
+                <div className="meter" aria-hidden="true"><i style={{ width: `${Math.round(((gridDone + (buildFrac ?? 0)) / 6) * 100)}%` }} /></div>
+              </div>
+            ) : !channels && (
               <div className="game-load">
                 <span>{waitText}</span>
                 {buildFrac !== null && <div className="meter" aria-hidden="true"><i style={{ width: `${Math.round(buildFrac * 100)}%` }} /></div>}
               </div>
             )}
-            <RocketGame ready={!!channels} readyText={n > 0 ? "Your images are ready." : "Loading finished, but SPHEREx has no images here."}
+            <RocketGame ready={gameReady} readyText={gameReadyText}
               onShowSky={() => setGameOpen(false)} onClose={() => setGameOpen(false)} />
           </div>
+        )}
+
+        {gridSlow && channels && !gameOpen && !err && (
+          <button className="chip game-start grid-game" onClick={() => setGameOpen(true)}>
+            Play a game while detectors {Math.min(gridDone + 1, 6)}–6 load
+          </button>
         )}
 
         {!(gameOpen && !err) && (err || !channels || (n === 0 && !st.grid)) && (
