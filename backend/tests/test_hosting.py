@@ -121,3 +121,25 @@ def test_deep_collection_failure_is_tolerated_but_not_cached(tmp_path, monkeypat
     exps, meta = archive.find_exposures(10.0, 20.0, use_cache=False)
     assert len(exps) == 1 and any(c.endswith("_deep") for c in meta["errors"])
     assert not (tmp_path / "queries").exists() or not any((tmp_path / "queries").iterdir())
+
+
+def test_irsa_search_gives_up_within_deadline(tmp_path, monkeypatch):
+    """A hanging IRSA must not keep visitors on 'Searching the archive' for minutes."""
+    import httpx
+    import pytest
+    from lits import archive, config
+    monkeypatch.setattr(config, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(archive, "RETRY_WAITS", (0.0, 0.0, 0.0))
+    monkeypatch.setattr(archive, "SIA_TIMEOUT", 0.2)
+    monkeypatch.setattr(archive, "SIA_DEADLINE", 0.5)
+    calls = []
+    def hang(coll, ra, dec):
+        calls.append(coll)
+        time.sleep(0.2)
+        raise httpx.ReadTimeout("timed out")
+    monkeypatch.setattr(archive, "query_collection", hang)
+    t0 = time.time()
+    with pytest.raises(archive.ArchiveUnavailable) as ei:
+        archive.find_exposures(10.0, 20.0, use_cache=False)
+    assert time.time() - t0 < 1.5
+    assert "didn't respond in time" in str(ei.value)

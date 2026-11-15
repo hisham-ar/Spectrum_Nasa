@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -105,6 +106,8 @@ class ArchiveUnavailable(RuntimeError):
 
 
 RETRY_WAITS = (2.0, 5.0, 10.0)   # seconds before the 2nd, 3rd and 4th attempt
+SIA_TIMEOUT = float(os.environ.get("LITS_SIA_TIMEOUT", "30"))     # one IRSA search normally takes a few s
+SIA_DEADLINE = float(os.environ.get("LITS_SIA_DEADLINE", "70"))   # give up and say so after this long
 
 
 def _retryable(e: Exception) -> bool:
@@ -114,14 +117,18 @@ def _retryable(e: Exception) -> bool:
 
 
 def query_collection_retry(collection: str, ra: float, dec: float) -> list[Exposure]:
-    """IRSA sometimes answers '502 Proxy Error' for a moment; ask again before giving up."""
+    """IRSA sometimes answers '502 Proxy Error' for a moment; ask again before giving up,
+    but never keep a visitor on "Searching the archive" for more than about SIA_DEADLINE s."""
+    t0 = time.monotonic()
     for attempt in range(len(RETRY_WAITS) + 1):
         try:
             return query_collection(collection, ra, dec)
         except Exception as e:  # noqa: BLE001
-            if attempt == len(RETRY_WAITS) or not _retryable(e):
+            wait = RETRY_WAITS[attempt] if attempt < len(RETRY_WAITS) else 0.0
+            if (attempt == len(RETRY_WAITS) or not _retryable(e)
+                    or time.monotonic() - t0 + wait + SIA_TIMEOUT > SIA_DEADLINE):
                 raise
-            time.sleep(RETRY_WAITS[attempt])
+            time.sleep(wait)
     raise AssertionError("unreachable")
 
 
@@ -134,7 +141,7 @@ def _unavailable_text(errors: dict[str, Exception]) -> str:
 
 def query_collection(collection: str, ra: float, dec: float, radius_deg: float = 1 / 3600) -> list[Exposure]:
     params = {"COLLECTION": collection, "POS": f"CIRCLE {ra:.7f} {dec:.7f} {radius_deg:.7f}"}
-    r = client().get(config.SIA2_URL, params=params)
+    r = client().get(config.SIA2_URL, params=params, timeout=SIA_TIMEOUT)
     r.raise_for_status()
     vot = parse_votable(io.BytesIO(r.content), verify="ignore")
     # FIELD names (ObsCore: access_url, t_min, ...), not their internal IDs
